@@ -7,7 +7,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* Full-screen map container */
+    /* Ensure full viewport height and remove default margins */
     html, body {
       height: 100%;
       margin: 0;
@@ -24,27 +24,63 @@
       font-family: Arial, sans-serif;
       font-size: 14px;
     }
+    /* Container for the feed selector dropdown */
+    #feedSelectorContainer {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 5px 10px;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    #feedSelector {
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
+  <!-- Dropdown for selecting earthquake feed -->
+  <div id="feedSelectorContainer">
+    <label for="feedSelector">Earthquake Feed:</label>
+    <select id="feedSelector">
+      <option value="all_hour">All Earthquakes</option>
+      <option value="1.0_hour">Magnitude 1.0+</option>
+      <option value="2.5_hour">Magnitude 2.5+</option>
+      <option value="4.5_hour">Magnitude 4.5+</option>
+      <option value="significant_hour">Significant</option>
+    </select>
+  </div>
+  
   <!-- Map container -->
   <div id="map"></div>
 
   <!-- Leaflet JavaScript library -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize the map with a global view
-    var map = L.map('map').setView([0, 0], 2);
+    // Define world bounds to restrict panning
+    var southWest = L.latLng(-90, -180),
+        northEast = L.latLng(90, 180),
+        bounds = L.latLngBounds(southWest, northEast);
+
+    // Initialize the map with a global view and restrict panning to the defined bounds
+    var map = L.map('map', {
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0
+    }).setView([0, 0], 2);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Layer group for earthquake markers
+    // Layer group to hold earthquake markers
     var earthquakeLayer = L.layerGroup().addTo(map);
 
-    // Custom control to display the last update time
+    // Custom control for displaying the last update time
     var lastUpdatedControl = L.control({ position: 'bottomright' });
     lastUpdatedControl.onAdd = function(map) {
       var div = L.DomUtil.create('div', 'update-info');
@@ -53,15 +89,18 @@
     };
     lastUpdatedControl.addTo(map);
 
-    // Function to fetch earthquake data and update the map
+    // Store the current feed type (default: all earthquakes)
+    var currentFeed = document.getElementById('feedSelector').value;
+
+    // Function to fetch earthquake data and update the map markers
     function fetchEarthquakes() {
-      fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson')
+      var feedUrl = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/' + currentFeed + '.geojson';
+      fetch(feedUrl)
         .then(response => response.json())
         .then(data => {
           // Clear existing markers
           earthquakeLayer.clearLayers();
-
-          // Loop through each earthquake event
+          // Add markers for each earthquake event
           data.features.forEach(feature => {
             var coords = feature.geometry.coordinates;
             var lat = coords[1];
@@ -70,9 +109,9 @@
             var place = feature.properties.place;
             var time = new Date(feature.properties.time).toLocaleString();
 
-            // Create a circle marker with styling based on magnitude
+            // Create a circle marker with size and color based on magnitude
             var marker = L.circleMarker([lat, lng], {
-              radius: magnitude * 3,  // Scale marker size with magnitude
+              radius: magnitude * 3,
               fillColor: getColor(magnitude),
               color: '#000',
               weight: 1,
@@ -83,12 +122,9 @@
               Magnitude: ${magnitude}<br>
               Time: ${time}`
             );
-
-            // Add marker to the layer group
             marker.addTo(earthquakeLayer);
           });
-
-          // Update the last updated time in the custom control
+          // Update the last updated time
           document.querySelector('.update-info').innerHTML = 'Last Updated: ' + new Date().toLocaleString();
         })
         .catch(error => {
@@ -96,7 +132,7 @@
         });
     }
 
-    // Helper function to choose marker color based on magnitude
+    // Helper function to determine marker color based on earthquake magnitude
     function getColor(mag) {
       return mag > 5 ? '#d73027' :
              mag > 4 ? '#fc8d59' :
@@ -106,7 +142,13 @@
                        '#1a9850';
     }
 
-    // Initial fetch and subsequent automatic updates every 60 seconds
+    // Event listener for when the feed selection changes
+    document.getElementById('feedSelector').addEventListener('change', function() {
+      currentFeed = this.value;
+      fetchEarthquakes();
+    });
+
+    // Initial fetch and automatic updates every 60 seconds
     fetchEarthquakes();
     setInterval(fetchEarthquakes, 60000);
   </script>
