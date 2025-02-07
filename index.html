@@ -3,137 +3,224 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Real-Time Global Earthquake Tracker</title>
+  <title>Real-Time Earthquake</title>
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* Use full viewport without scrolling */
-    html, body {
+    /* Reset and full screen styling */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
+    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+
+    /* Sidebar styling */
+    #sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 300px;
       height: 100%;
-      margin: 0;
-      overflow: hidden;
+      background: #fff;
+      z-index: 1000;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+      transform: translateX(-300px);
+      transition: transform 0.3s ease;
+      overflow-y: auto;
     }
-    /* Map container fills the entire screen */
-    #map {
+    #sidebar.open { transform: translateX(0); }
+    #sidebarHeader {
+      background: #333;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+    }
+    #sidebarControls {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    #sidebarControls label { display: block; margin-bottom: 5px; font-size: 14px; }
+    #sidebarControls select, #sidebarControls input {
       width: 100%;
-      height: 100%;
-    }
-    /* Styling for the update control */
-    .update-info {
-      background: rgba(255, 255, 255, 0.9);
-      padding: 8px 12px;
-      border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      font-family: Arial, sans-serif;
+      padding: 6px;
+      margin-bottom: 10px;
       font-size: 14px;
     }
-    /* Container for the feed selector dropdown */
-    #feedSelectorContainer {
+    #quakeList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #quakeList li {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #quakeList li:hover {
+      background: #f0f0f0;
+    }
+    
+    /* Toggle button styling */
+    #sidebarToggle {
       position: absolute;
       top: 10px;
       left: 10px;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
+      z-index: 1100;
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    
+    /* Last updated info */
+    #lastUpdated {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.9);
       padding: 8px 12px;
       border-radius: 4px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      font-family: Arial, sans-serif;
       font-size: 14px;
-    }
-    #feedSelector {
-      font-size: 14px;
+      z-index: 1100;
     }
   </style>
 </head>
 <body>
-  <!-- Dropdown for selecting the earthquake feed -->
-  <div id="feedSelectorContainer">
-    <label for="feedSelector">Earthquake Feed:</label>
-    <select id="feedSelector">
-      <option value="all_hour">All Earthquakes</option>
-      <option value="1.0_hour">Magnitude 1.0+</option>
-      <option value="2.5_hour">Magnitude 2.5+</option>
-      <option value="4.5_hour">Magnitude 4.5+</option>
-      <option value="significant_hour">Significant</option>
-    </select>
+  <!-- Sidebar Toggle Button -->
+  <button id="sidebarToggle">&#9776; Menu</button>
+  
+  <!-- Sidebar Panel -->
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <h2>Earthquake Tracker</h2>
+    </div>
+    <div id="sidebarControls">
+      <label for="feedSelector">Earthquake Feed:</label>
+      <select id="feedSelector">
+        <option value="all_hour">All Earthquakes</option>
+        <option value="1.0_hour">Magnitude 1.0+</option>
+        <option value="2.5_hour">Magnitude 2.5+</option>
+        <option value="4.5_hour">Magnitude 4.5+</option>
+        <option value="significant_hour">Significant</option>
+      </select>
+      <label for="minMagnitude">Minimum Magnitude:</label>
+      <input type="number" id="minMagnitude" placeholder="e.g., 0" step="0.1" value="0">
+    </div>
+    <ul id="quakeList"></ul>
   </div>
   
-  <!-- Map container -->
+  <!-- Map Container -->
   <div id="map"></div>
-
+  
+  <!-- Last Updated Info -->
+  <div id="lastUpdated">Last Updated: N/A</div>
+  
   <!-- Leaflet JavaScript library -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Define world bounds (to restrict panning)
-    var southWest = L.latLng(-90, -180),
-        northEast = L.latLng(90, 180),
-        bounds = L.latLngBounds(southWest, northEast);
-
-    // Initialize the map:
-    // - worldCopyJump makes panning seamless when switching between wrapped worlds.
-    // - maxBounds restricts panning to the real world.
+    // Set up world bounds to restrict panning
+    var bounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
+    
+    // Initialize the map with worldCopyJump for seamless panning and maxBounds to avoid infinite scroll
     var map = L.map('map', {
-      worldCopyJump: true,
       maxBounds: bounds,
-      maxBoundsViscosity: 1.0
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: true
     }).setView([0, 0], 2);
-
-    // Add OpenStreetMap tile layer with noWrap enabled to prevent duplicate tiles.
+    
+    // Add OpenStreetMap tile layer with noWrap to prevent duplicate tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       noWrap: true
     }).addTo(map);
-
-    // Create a layer group for earthquake markers.
+    
+    // Layer to hold earthquake markers
     var earthquakeLayer = L.layerGroup().addTo(map);
-
-    // Custom control for showing the last update time.
-    var lastUpdatedControl = L.control({ position: 'bottomright' });
-    lastUpdatedControl.onAdd = function(map) {
-      var div = L.DomUtil.create('div', 'update-info');
-      div.innerHTML = 'Last Updated: N/A';
-      return div;
-    };
-    lastUpdatedControl.addTo(map);
-
-    // Current feed type (default is "all_hour").
-    var currentFeed = document.getElementById('feedSelector').value;
-
-    // Fetch earthquake data from USGS and update markers.
+    
+    // Global variable to store fetched earthquake data
+    var earthquakeData = [];
+    
+    // Toggle sidebar open/close
+    var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    sidebarToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+    });
+    
+    // Last updated info element
+    var lastUpdatedElem = document.getElementById('lastUpdated');
+    
+    // Function to fetch earthquake data from USGS based on selected feed
     function fetchEarthquakes() {
-      var feedUrl = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/' + currentFeed + '.geojson';
+      var feed = document.getElementById('feedSelector').value;
+      var feedUrl = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/' + feed + '.geojson';
       fetch(feedUrl)
         .then(response => response.json())
         .then(data => {
-          earthquakeLayer.clearLayers();
-          data.features.forEach(feature => {
-            var coords = feature.geometry.coordinates;
-            var lat = coords[1],
-                lng = coords[0],
-                magnitude = feature.properties.mag,
-                place = feature.properties.place,
-                time = new Date(feature.properties.time).toLocaleString();
-
-            // Create a circle marker; size and color depend on the magnitude.
-            var marker = L.circleMarker([lat, lng], {
-              radius: magnitude * 3,
-              fillColor: getColor(magnitude),
-              color: '#333',
-              weight: 1,
-              opacity: 1,
-              fillOpacity: 0.8
-            }).bindPopup(
-              `<strong>${place}</strong><br>Magnitude: ${magnitude}<br>Time: ${time}`
-            );
-            marker.addTo(earthquakeLayer);
-          });
-          // Update last updated timestamp.
-          document.querySelector('.update-info').innerHTML = 'Last Updated: ' + new Date().toLocaleString();
+          earthquakeData = data.features;
+          updateMapAndList();
+          lastUpdatedElem.innerHTML = 'Last Updated: ' + new Date().toLocaleString();
         })
         .catch(error => console.error('Error fetching earthquake data:', error));
     }
-
-    // Helper function to determine marker color based on magnitude.
+    
+    // Update map markers and sidebar list based on earthquakeData and filters
+    function updateMapAndList() {
+      earthquakeLayer.clearLayers();
+      var quakeList = document.getElementById('quakeList');
+      quakeList.innerHTML = '';
+      var minMagnitude = parseFloat(document.getElementById('minMagnitude').value) || 0;
+      
+      earthquakeData.forEach(feature => {
+        var coords = feature.geometry.coordinates;
+        var lat = coords[1],
+            lng = coords[0],
+            magnitude = feature.properties.mag,
+            place = feature.properties.place,
+            time = new Date(feature.properties.time).toLocaleString();
+        
+        // Apply filter based on minimum magnitude
+        if (magnitude < minMagnitude) return;
+        
+        // Create a circle marker for the earthquake
+        var marker = L.circleMarker([lat, lng], {
+          radius: magnitude * 3,
+          fillColor: getColor(magnitude),
+          color: '#333',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).bindPopup(
+          `<strong>${place}</strong><br>Magnitude: ${magnitude}<br>Time: ${time}`
+        );
+        
+        // When the marker is clicked, optionally highlight the corresponding list item
+        marker.on('click', function() {
+          var listItem = document.getElementById(feature.id);
+          if (listItem) {
+            listItem.scrollIntoView({ behavior: 'smooth' });
+            listItem.style.backgroundColor = '#e0e0e0';
+            setTimeout(() => listItem.style.backgroundColor = '', 1500);
+          }
+        });
+        marker.addTo(earthquakeLayer);
+        
+        // Create a corresponding list item in the sidebar
+        var li = document.createElement('li');
+        li.id = feature.id;
+        li.innerHTML = `<strong>${place}</strong><br>Mag: ${magnitude} | ${time}`;
+        li.addEventListener('click', function() {
+          map.flyTo([lat, lng], 6, { duration: 1.5 });
+          marker.openPopup();
+        });
+        quakeList.appendChild(li);
+      });
+    }
+    
+    // Helper function to determine marker color based on magnitude
     function getColor(mag) {
       return mag > 5 ? '#d73027' :
              mag > 4 ? '#fc8d59' :
@@ -142,14 +229,12 @@
              mag > 1 ? '#91cf60' :
                        '#1a9850';
     }
-
-    // Update the feed when the selection changes.
-    document.getElementById('feedSelector').addEventListener('change', function() {
-      currentFeed = this.value;
-      fetchEarthquakes();
-    });
-
-    // Initial fetch and automatic updates every 60 seconds.
+    
+    // Listen for changes in the feed selector and the magnitude filter
+    document.getElementById('feedSelector').addEventListener('change', fetchEarthquakes);
+    document.getElementById('minMagnitude').addEventListener('change', updateMapAndList);
+    
+    // Initial data fetch and auto-refresh every 60 seconds
     fetchEarthquakes();
     setInterval(fetchEarthquakes, 60000);
   </script>
