@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Real-Time Earthquake</title>
+  <title>Advanced Real-Time Earthquake Tracker</title>
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
@@ -11,7 +11,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
     #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-
+    
     /* Sidebar styling */
     #sidebar {
       position: absolute;
@@ -28,7 +28,7 @@
     }
     #sidebar.open { transform: translateX(0); }
     #sidebarHeader {
-      background: #333;
+      background: #222;
       color: #fff;
       padding: 15px;
       text-align: center;
@@ -65,13 +65,13 @@
       top: 10px;
       left: 10px;
       z-index: 1100;
-      background: #333;
+      background: #222;
       color: #fff;
       border: none;
       padding: 10px 15px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 18px;
     }
     
     /* Last updated info */
@@ -79,12 +79,18 @@
       position: absolute;
       bottom: 10px;
       right: 10px;
-      background: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
       padding: 8px 12px;
       border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       font-size: 14px;
       z-index: 1100;
+    }
+    
+    /* Responsive adjustments for smaller screens */
+    @media (max-width: 480px) {
+      #sidebar { width: 80%; transform: translateX(-80%); }
+      #sidebar.open { transform: translateX(0); }
     }
   </style>
 </head>
@@ -124,20 +130,22 @@
     // Set up world bounds to restrict panning
     var bounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
     
-    // Initialize the map with worldCopyJump for seamless panning and maxBounds to avoid infinite scroll
+    // Initialize the map with dark themed tile layer and worldCopyJump for seamless panning
     var map = L.map('map', {
       maxBounds: bounds,
       maxBoundsViscosity: 1.0,
       worldCopyJump: true
     }).setView([0, 0], 2);
     
-    // Add OpenStreetMap tile layer with noWrap to prevent duplicate tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    // Add CartoDB Dark Matter tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
       noWrap: true
     }).addTo(map);
     
-    // Layer to hold earthquake markers
+    // Layer group for earthquake markers
     var earthquakeLayer = L.layerGroup().addTo(map);
     
     // Global variable to store fetched earthquake data
@@ -185,19 +193,27 @@
         // Apply filter based on minimum magnitude
         if (magnitude < minMagnitude) return;
         
-        // Create a circle marker for the earthquake
+        // Create a styled circle marker for the earthquake
         var marker = L.circleMarker([lat, lng], {
-          radius: magnitude * 3,
+          radius: magnitude * 4,
           fillColor: getColor(magnitude),
-          color: '#333',
-          weight: 1,
+          color: '#fff',
+          weight: 2,
           opacity: 1,
-          fillOpacity: 0.8
+          fillOpacity: 0.9
         }).bindPopup(
           `<strong>${place}</strong><br>Magnitude: ${magnitude}<br>Time: ${time}`
         );
         
-        // When the marker is clicked, optionally highlight the corresponding list item
+        // Add mouseover effects to improve responsiveness
+        marker.on('mouseover', function() {
+          this.setStyle({ weight: 4, color: '#ffd700', fillOpacity: 1 });
+        });
+        marker.on('mouseout', function() {
+          this.setStyle({ weight: 2, color: '#fff', fillOpacity: 0.9 });
+        });
+        
+        // When the marker is clicked, highlight the corresponding list item
         marker.on('click', function() {
           var listItem = document.getElementById(feature.id);
           if (listItem) {
@@ -220,21 +236,21 @@
       });
     }
     
-    // Helper function to determine marker color based on magnitude
+    // Helper function to determine marker color based on magnitude.
     function getColor(mag) {
-      return mag > 5 ? '#d73027' :
-             mag > 4 ? '#fc8d59' :
-             mag > 3 ? '#fee08b' :
-             mag > 2 ? '#d9ef8b' :
-             mag > 1 ? '#91cf60' :
-                       '#1a9850';
+      return mag > 5 ? '#ff4500' :
+             mag > 4 ? '#ff8c00' :
+             mag > 3 ? '#ffd700' :
+             mag > 2 ? '#9acd32' :
+             mag > 1 ? '#32cd32' :
+                       '#00fa9a';
     }
     
-    // Listen for changes in the feed selector and the magnitude filter
+    // Listen for changes in the feed selector and the magnitude filter.
     document.getElementById('feedSelector').addEventListener('change', fetchEarthquakes);
     document.getElementById('minMagnitude').addEventListener('change', updateMapAndList);
     
-    // Initial data fetch and auto-refresh every 60 seconds
+    // Initial data fetch and auto-refresh every 60 seconds.
     fetchEarthquakes();
     setInterval(fetchEarthquakes, 60000);
   </script>
