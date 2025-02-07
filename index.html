@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Global Earthquake Tracker</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    /* Full-screen map container */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      height: 100%;
+    }
+    /* Styling for the last update info */
+    .update-info {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px 10px;
+      border-radius: 4px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Map container -->
+  <div id="map"></div>
+
+  <!-- Leaflet JavaScript library -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map with a global view
+    var map = L.map('map').setView([0, 0], 2);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Layer group for earthquake markers
+    var earthquakeLayer = L.layerGroup().addTo(map);
+
+    // Custom control to display the last update time
+    var lastUpdatedControl = L.control({ position: 'bottomright' });
+    lastUpdatedControl.onAdd = function(map) {
+      var div = L.DomUtil.create('div', 'update-info');
+      div.innerHTML = 'Last Updated: N/A';
+      return div;
+    };
+    lastUpdatedControl.addTo(map);
+
+    // Function to fetch earthquake data and update the map
+    function fetchEarthquakes() {
+      fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson')
+        .then(response => response.json())
+        .then(data => {
+          // Clear existing markers
+          earthquakeLayer.clearLayers();
+
+          // Loop through each earthquake event
+          data.features.forEach(feature => {
+            var coords = feature.geometry.coordinates;
+            var lat = coords[1];
+            var lng = coords[0];
+            var magnitude = feature.properties.mag;
+            var place = feature.properties.place;
+            var time = new Date(feature.properties.time).toLocaleString();
+
+            // Create a circle marker with styling based on magnitude
+            var marker = L.circleMarker([lat, lng], {
+              radius: magnitude * 3,  // Scale marker size with magnitude
+              fillColor: getColor(magnitude),
+              color: '#000',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            }).bindPopup(
+              `<strong>${place}</strong><br>
+              Magnitude: ${magnitude}<br>
+              Time: ${time}`
+            );
+
+            // Add marker to the layer group
+            marker.addTo(earthquakeLayer);
+          });
+
+          // Update the last updated time in the custom control
+          document.querySelector('.update-info').innerHTML = 'Last Updated: ' + new Date().toLocaleString();
+        })
+        .catch(error => {
+          console.error('Error fetching earthquake data:', error);
+        });
+    }
+
+    // Helper function to choose marker color based on magnitude
+    function getColor(mag) {
+      return mag > 5 ? '#d73027' :
+             mag > 4 ? '#fc8d59' :
+             mag > 3 ? '#fee08b' :
+             mag > 2 ? '#d9ef8b' :
+             mag > 1 ? '#91cf60' :
+                       '#1a9850';
+    }
+
+    // Initial fetch and subsequent automatic updates every 60 seconds
+    fetchEarthquakes();
+    setInterval(fetchEarthquakes, 60000);
+  </script>
+</body>
+</html>
