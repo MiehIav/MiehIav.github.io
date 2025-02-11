@@ -1,338 +1,131 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advanced Real-Time Earthquake Tracker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-  <style>
-    /* Improved CSS with better organization and additional features */
-    :root {
-      --primary-color: #2c3e50;
-      --secondary-color: #3498db;
-      --danger-color: #e74c3c;
-      --success-color: #27ae60;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
-    
-    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-    
-    /* Enhanced sidebar with better accessibility */
-    #sidebar {
-      position: absolute;
-      width: 320px;
-      height: 100%;
-      background: #fff;
-      box-shadow: 3px 0 8px rgba(0,0,0,0.2);
-      transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      z-index: 1000;
-    }
-    #sidebar.open { transform: translateX(0); }
-    
-    .sidebar-section {
-      padding: 1rem;
-      border-bottom: 1px solid #eee;
-    }
-    #quakeList {
-      flex: 1;
-      overflow-y: auto;
-    }
-    .quake-item {
-      padding: 1rem;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.5rem;
-      align-items: center;
-    }
-    .quake-item:hover { background: #f8f9fa; }
-    .quake-item.active { background: var(--secondary-color); color: white; }
-    .magnitude-badge {
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: white;
-    }
-    /* Improved controls */
-    .filter-group { margin-bottom: 1rem; }
-    .filter-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-    .filter-control { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
-    /* Enhanced map controls */
-    #mapControls {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      z-index: 1000;
-      display: flex;
-      gap: 0.5rem;
-    }
-    .map-control-btn {
-      background: white;
-      border: none;
-      padding: 0.75rem;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .map-control-btn:hover { background: #f8f9fa; }
-    /* Loading indicator */
-    #loading {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 1rem 2rem;
-      border-radius: 4px;
-      display: none;
-      z-index: 2000;
-    }
-  </style>
+<title>Solar System Map</title>
+<style>
+body {
+  background-color: #000;
+  overflow: hidden;
+  margin: 0;
+}
+
+#solar-system {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+#sun {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: yellow;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Planet specific sizes (adjust as needed) */
+#mercury { width: 10px; height: 10px; }
+#venus { width: 15px; height: 15px; }
+#earth { width: 20px; height: 20px; }
+#mars { width: 18px; height: 18px; }
+#jupiter { width: 30px; height: 30px; }
+#saturn { width: 25px; height: 25px; }
+#uranus { width: 22px; height: 22px; }
+#neptune { width: 20px; height: 20px; }
+
+</style>
 </head>
 <body>
-  <div id="loading">Loading Earthquake Data...</div>
-  
-  <button id="sidebarToggle" class="map-control-btn" aria-label="Toggle sidebar">☰ Menu</button>
-  
-  <div id="mapControls">
-    <button class="map-control-btn" id="refreshBtn" aria-label="Refresh data">↻ Refresh</button>
-    <button class="map-control-btn" id="autoRefreshToggle" aria-label="Toggle auto refresh">⏵ Auto Refresh</button>
-  </div>
 
-  <div id="sidebar">
-    <div class="sidebar-section" id="sidebarHeader">
-      <h2>Earthquake Tracker</h2>
-      <p class="last-updated-text" id="lastUpdated">Last Updated: N/A</p>
-    </div>
-    
-    <div class="sidebar-section">
-      <div class="filter-group">
-        <label for="timeRange">Time Range:</label>
-        <!-- Note: The values are now 'hour', 'day', 'week', and 'month',
-             and we'll prepend "all_" in the fetch URL -->
-        <select id="timeRange" class="filter-control">
-          <option value="hour">Past Hour</option>
-          <option value="day">Past Day</option>
-          <option value="week">Past Week</option>
-          <option value="month">Past Month</option>
-        </select>
-      </div>
-      
-      <div class="filter-group">
-        <label for="minMagnitude">Minimum Magnitude:</label>
-        <input type="range" id="minMagnitude" class="filter-control" min="0" max="8" step="0.5" value="2.5">
-        <output for="minMagnitude" id="magnitudeValue">2.5</output>
-      </div>
-    </div>
+<div id="solar-system">
+  <div id="sun"></div>
+  <div id="mercury" class="planet"></div>
+  <div id="venus" class="planet"></div>
+  <div id="earth" class="planet"></div>
+  <div id="mars" class="planet"></div>
+  <div id="jupiter" class="planet"></div>
+  <div id="saturn" class="planet"></div>
+  <div id="uranus" class="planet"></div>
+  <div id="neptune" class="planet"></div>
+</div>
 
-    <ul id="quakeList"></ul>
-  </div>
+<script>
+const planets = {
+  mercury: { element: '199', color: "gray" },
+  venus: { element: '299', color: "orange" },
+  earth: { element: '399', color: "blue" },
+  mars: { element: '499', color: "red" },
+  jupiter: { element: '599', color: "brown" },
+  saturn: { element: '699', color: "gold" },
+  uranus: { element: '799', color: "lightblue" },
+  neptune: { element: '899', color: "darkblue" },
+};
 
-  <div id="map"></div>
+const sun = document.getElementById("sun");
+const solarSystem = document.getElementById("solar-system");
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-  <script>
-    class EarthquakeTracker {
-      constructor() {
-        this.config = {
-          autoRefreshInterval: 60000,
-          clusterOptions: {
-            showCoverageOnHover: false,
-            maxClusterRadius: 40
-          }
-        };
-        
-        this.initMap();
-        this.initEventListeners();
-        this.initFilters();
-        this.loadData();
+async function getPlanetData(elementId) {
+  const apiUrl = `https://ssd-api.jpl.nasa.gov/horizons_data.api?command=%27get_object_info%27&id.id_type=%27id%27&id=${elementId}&format=json`;
+
+  try {
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    if (data.result_code === null) {
+      const orbitalElements = data.result.split('\n').filter(line => line.includes('a (AU)'));
+      if (orbitalElements.length > 0) {
+        const semiMajorAxisAU = parseFloat(orbitalElements[0].split('=')[1].trim());
+        return semiMajorAxisAU * 149.6e9; // Convert AU to meters
+      } else {
+        console.error("Could not find semi-major axis in API response.");
+        return null;
       }
 
-      initMap() {
-        this.map = L.map('map', {
-          maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
-          worldCopyJump: true
-        }).setView([20, 0], 2);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap, CARTO',
-          subdomains: 'abcd'
-        }).addTo(this.map);
-
-        this.markerCluster = L.markerClusterGroup(this.config.clusterOptions);
-        this.map.addLayer(this.markerCluster);
-      }
-
-      initEventListeners() {
-        document.getElementById('sidebarToggle').addEventListener('click', () => {
-          document.getElementById('sidebar').classList.toggle('open');
-        });
-
-        document.getElementById('refreshBtn').addEventListener('click', () => this.loadData());
-        document.getElementById('autoRefreshToggle').addEventListener('click', this.toggleAutoRefresh.bind(this));
-        document.getElementById('minMagnitude').addEventListener('input', (e) => {
-          document.getElementById('magnitudeValue').textContent = e.target.value;
-          this.updateDisplay();
-        });
-        
-        document.getElementById('timeRange').addEventListener('change', () => this.loadData());
-      }
-
-      initFilters() {
-        this.filters = {
-          minMagnitude: 0,
-          timeRange: 'hour'
-        };
-      }
-
-      async loadData() {
-        try {
-          this.showLoading();
-          const timeRange = document.getElementById('timeRange').value;
-          // Update the URL to use the correct endpoint (prepend "all_")
-          const feedUrl = `https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_${timeRange}.geojson`;
-          const response = await fetch(feedUrl);
-          this.earthquakeData = await response.json();
-          this.updateDisplay();
-          this.updateLastUpdated();
-        } catch (error) {
-          console.error('Error loading data:', error);
-          alert('Failed to load earthquake data. Please try again later.');
-        } finally {
-          this.hideLoading();
-        }
-      }
-
-      updateDisplay() {
-        this.markerCluster.clearLayers();
-        this.populateQuakeList();
-        
-        const minMagnitude = parseFloat(document.getElementById('minMagnitude').value);
-        
-        this.earthquakeData.features
-          .filter(f => f.properties.mag >= minMagnitude)
-          .forEach(feature => this.createMarker(feature));
-      }
-
-      createMarker(feature) {
-        const { coordinates: [lng, lat, depth] } = feature.geometry;
-        const { mag, place, time, url } = feature.properties;
-        
-        const marker = L.circleMarker([lat, lng], {
-          radius: Math.min(mag * 4, 32),
-          fillColor: this.getColor(mag),
-          color: '#fff',
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.8
-        });
-
-        marker.bindPopup(this.createPopupContent(feature.properties, depth));
-        this.markerCluster.addLayer(marker);
-      }
-
-      createPopupContent(props, depth) {
-        return `
-          <div class="popup-content">
-            <h3>${props.place}</h3>
-            <ul>
-              <li>Magnitude: <strong>${props.mag}</strong></li>
-              <li>Depth: ${depth} km</li>
-              <li>Time: ${new Date(props.time).toLocaleString()}</li>
-              ${props.tsunami ? '<li class="tsunami-warning">Tsunami Warning</li>' : ''}
-            </ul>
-            <a href="${props.url}" target="_blank" rel="noopener">More details →</a>
-          </div>
-        `;
-      }
-
-      populateQuakeList() {
-        const list = document.getElementById('quakeList');
-        list.innerHTML = '';
-        
-        this.earthquakeData.features
-          .sort((a, b) => b.properties.mag - a.properties.mag)
-          .forEach(feature => {
-            const li = document.createElement('li');
-            li.className = 'quake-item';
-            li.innerHTML = this.createListItem(feature);
-            li.addEventListener('click', () => this.handleQuakeClick(feature));
-            list.appendChild(li);
-          });
-      }
-
-      createListItem(feature) {
-        const { mag, place, time } = feature.properties;
-        return `
-          <div class="magnitude-badge" style="background:${this.getColor(mag)}">${mag}</div>
-          <div>
-            <div class="quake-location">${place}</div>
-            <div class="quake-time">${this.formatRelativeTime(time)}</div>
-          </div>
-        `;
-      }
-
-      handleQuakeClick(feature) {
-        const [lng, lat] = feature.geometry.coordinates;
-        this.map.flyTo([lat, lng], 6, { duration: 1 });
-        this.markerCluster.getLayers().find(l => l._latlng.equals([lat, lng])).openPopup();
-      }
-
-      getColor(mag) {
-        return mag >= 7 ? '#8b0000' :
-               mag >= 5 ? '#ff4500' :
-               mag >= 4 ? '#ff8c00' :
-               mag >= 3 ? '#ffd700' :
-               mag >= 2 ? '#9acd32' :
-               mag >= 1 ? '#32cd32' :
-                          '#00fa9a';
-      }
-
-      formatRelativeTime(timestamp) {
-        const diff = Date.now() - timestamp;
-        const minutes = Math.floor(diff / 60000);
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        return new Date(timestamp).toLocaleDateString();
-      }
-
-      toggleAutoRefresh() {
-        const btn = document.getElementById('autoRefreshToggle');
-        if (this.autoRefreshInterval) {
-          clearInterval(this.autoRefreshInterval);
-          this.autoRefreshInterval = null;
-          btn.textContent = '⏵ Auto Refresh';
-        } else {
-          this.autoRefreshInterval = setInterval(() => this.loadData(), this.config.autoRefreshInterval);
-          btn.textContent = '⏸ Auto Refresh';
-        }
-      }
-
-      showLoading() { document.getElementById('loading').style.display = 'block'; }
-      hideLoading() { document.getElementById('loading').style.display = 'none'; }
-      updateLastUpdated() {
-        document.getElementById('lastUpdated').textContent = 
-          `Last Updated: ${new Date().toLocaleTimeString()}`;
-      }
+    } else {
+      console.error("Error fetching data from JPL Horizons API:", data.result_code);
+      return null;
     }
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    return null;
+  }
+}
 
-    // Initialize the application
-    new EarthquakeTracker();
-  </script>
+async function updatePlanetPositions() {
+  const centerX = solarSystem.offsetWidth / 2;
+  const centerY = solarSystem.offsetHeight / 2;
+  const scale = 0.00000002; // Adjust this scale as needed
+
+  for (const planetName in planets) {
+    const planet = document.getElementById(planetName);
+    const planetData = planets[planetName];
+
+    const distance = await getPlanetData(planetData.element);
+
+    if (distance !== null) {
+      const angle = Math.random() * 360; // Random angle for now
+      const x = centerX + distance * scale * Math.cos(angle * Math.PI / 180);
+      const y = centerY + distance * scale * Math.sin(angle * Math.PI / 180);
+
+      planet.style.left = x + "px";
+      planet.style.top = y + "px";
+      planet.style.backgroundColor = planetData.color;
+    }
+  }
+}
+
+updatePlanetPositions();
+window.addEventListener('resize', updatePlanetPositions);
+
+</script>
+
 </body>
 </html>
