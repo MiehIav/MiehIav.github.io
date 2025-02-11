@@ -11,8 +11,13 @@ body {
 
 #solar-system {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  width: 200vw;
+  height: 200vh;
+  cursor: grab;
+}
+
+#solar-system:active {
+  cursor: grabbing;
 }
 
 .planet {
@@ -32,7 +37,6 @@ body {
   transform: translate(-50%, -50%);
 }
 
-/* Planet specific sizes (adjust as needed) */
 #mercury { width: 10px; height: 10px; }
 #venus { width: 15px; height: 15px; }
 #earth { width: 20px; height: 20px; }
@@ -83,12 +87,11 @@ async function getPlanetData(elementId) {
       const orbitalElements = data.result.split('\n').filter(line => line.includes('a (AU)'));
       if (orbitalElements.length > 0) {
         const semiMajorAxisAU = parseFloat(orbitalElements[0].split('=')[1].trim());
-        return semiMajorAxisAU * 149.6e9; // Convert AU to meters
+        return semiMajorAxisAU * 149.6e9;
       } else {
         console.error("Could not find semi-major axis in API response.");
         return null;
       }
-
     } else {
       console.error("Error fetching data from JPL Horizons API:", data.result_code);
       return null;
@@ -99,10 +102,44 @@ async function getPlanetData(elementId) {
   }
 }
 
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let offsetX = 0;
+let offsetY = 0;
+
+solarSystem.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX - offsetX;
+  startY = e.clientY - offsetY;
+});
+
+solarSystem.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  offsetX = e.clientX - startX;
+  offsetY = e.clientY - startY;
+
+  const maxX = solarSystem.offsetWidth - window.innerWidth;
+  const maxY = solarSystem.offsetHeight - window.innerHeight;
+  offsetX = Math.max(-maxX, Math.min(0, offsetX));
+  offsetY = Math.max(-maxY, Math.min(0, offsetY));
+
+  solarSystem.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+});
+
+solarSystem.addEventListener('mouseup', () => {
+  isDragging = false;
+});
+
+solarSystem.addEventListener('mouseleave', () => {
+  isDragging = false;
+});
+
+
 async function updatePlanetPositions() {
   const centerX = solarSystem.offsetWidth / 2;
   const centerY = solarSystem.offsetHeight / 2;
-  const scale = 0.00000002; // Adjust this scale as needed
+  const scale = 0.00000002;
 
   for (const planetName in planets) {
     const planet = document.getElementById(planetName);
@@ -111,7 +148,7 @@ async function updatePlanetPositions() {
     const distance = await getPlanetData(planetData.element);
 
     if (distance !== null) {
-      const angle = Math.random() * 360; // Random angle for now
+      const angle = Math.random() * 360;
       const x = centerX + distance * scale * Math.cos(angle * Math.PI / 180);
       const y = centerY + distance * scale * Math.sin(angle * Math.PI / 180);
 
@@ -120,6 +157,13 @@ async function updatePlanetPositions() {
       planet.style.backgroundColor = planetData.color;
     }
   }
+
+  const initialOffsetX = -solarSystem.offsetWidth / 4;
+  const initialOffsetY = -solarSystem.offsetHeight / 4;
+
+  solarSystem.style.transform = `translate(${initialOffsetX}px, ${initialOffsetY}px)`;
+  offsetX = initialOffsetX;
+  offsetY = initialOffsetY;
 }
 
 updatePlanetPositions();
