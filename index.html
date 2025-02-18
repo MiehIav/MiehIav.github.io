@@ -1,264 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>War Map Maker</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        font-family: sans-serif;
-        overflow: hidden;
-      }
-      #toolbar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #333;
-        color: #fff;
-        padding: 10px;
-        z-index: 100;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
-      #toolbar button,
-      #toolbar input[type="file"] {
-        padding: 6px 10px;
-        font-size: 14px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      #toolbar button:hover {
-        background: #555;
-      }
-      #canvas-container {
-        position: absolute;
-        top: 50px; /* height of toolbar */
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: #ddd;
-      }
-      /* Optional: style for file input to hide the default button */
-      #bgInput {
-        display: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="toolbar">
-      <button id="addUnitBtn" title="Add a unit (red circle)">Add Unit</button>
-      <button id="addTextBtn" title="Add editable text">Add Text</button>
-      <button id="setBgBtn" title="Set a background image">Set Background</button>
-      <input type="file" id="bgInput" accept="image/*" />
-      <button id="toggleGridBtn" title="Toggle grid overlay">Toggle Grid</button>
-      <button id="zoomInBtn" title="Zoom in">Zoom In</button>
-      <button id="zoomOutBtn" title="Zoom out">Zoom Out</button>
-      <button id="resetViewBtn" title="Reset pan/zoom">Reset View</button>
-      <button id="exportBtn" title="Download your map as PNG">Export Map</button>
-      <button id="clearBtn" title="Clear the canvas">Clear Map</button>
-    </div>
-    <div id="canvas-container">
-      <canvas id="c"></canvas>
-    </div>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>My Visited Places Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    /* Simple styling for the clear button */
+    .leaflet-control-clear {
+      background-color: white;
+      padding: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map centered at [0,0] (will recenter once geolocation is found)
+    var map = L.map('map').setView([0, 0], 2);
 
-    <!-- Fabric.js from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
-    <script>
-      // Initialize Fabric.js canvas
-      const canvasElem = document.getElementById("c");
-      const container = document.getElementById("canvas-container");
-      canvasElem.width = container.clientWidth;
-      canvasElem.height = container.clientHeight;
-      const canvas = new fabric.Canvas("c", {
-        preserveObjectStacking: true,
-        selection: true,
-      });
+    // Add the satellite layer from Esri World Imagery
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri'
+    }).addTo(map);
 
-      // Keep canvas size in sync with container
-      window.addEventListener("resize", () => {
-        canvas.setWidth(container.clientWidth);
-        canvas.setHeight(container.clientHeight);
-        drawGrid();
-        canvas.renderAll();
-      });
+    // Retrieve visited points from localStorage or initialize an empty array
+    var visitedPoints = JSON.parse(localStorage.getItem('visitedPoints')) || [];
 
-      // --- Grid Functionality ---
-      let gridVisible = false;
-      const gridSize = 50;
-      function drawGrid() {
-        // Remove any existing grid lines
-        canvas.getObjects("line").forEach((obj) => {
-          if (obj.isGrid) canvas.remove(obj);
+    // Create a layer group to hold the visited markers
+    var visitedLayer = L.layerGroup().addTo(map);
+
+    // Function to add a visited marker (a semi-transparent circle)
+    function addVisitedMarker(lat, lng) {
+      L.circle([lat, lng], {
+        radius: 50,            // radius in meters
+        color: 'blue',
+        fillColor: '#30f',
+        fillOpacity: 0.3
+      }).addTo(visitedLayer);
+    }
+
+    // Draw any saved visited markers on startup
+    visitedPoints.forEach(function(point) {
+      addVisitedMarker(point.lat, point.lng);
+    });
+
+    // Create a polyline to connect visited points
+    var pathLine = L.polyline(visitedPoints.map(p => [p.lat, p.lng]), { color: 'red' }).addTo(map);
+
+    // Function to update the polyline when a new point is added
+    function updatePath() {
+      var latlngs = visitedPoints.map(p => [p.lat, p.lng]);
+      pathLine.setLatLngs(latlngs);
+    }
+
+    // Variable to keep track of your current location marker
+    var currentLocationMarker = null;
+
+    // Use the Geolocation API to watch your position
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(function(position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+
+        // Check if this location is already recorded (within ~50m tolerance)
+        var isNew = visitedPoints.every(function(point) {
+          return map.distance([lat, lng], [point.lat, point.lng]) > 50;
         });
-        if (!gridVisible) return;
 
-        const width = canvas.getWidth();
-        const height = canvas.getHeight();
-        // Draw vertical lines
-        for (let i = 0; i <= width / gridSize; i++) {
-          const line = new fabric.Line(
-            [i * gridSize, 0, i * gridSize, height],
-            {
-              stroke: "#ccc",
-              selectable: false,
-              evented: false,
-            }
-          );
-          line.isGrid = true;
-          canvas.add(line);
-          line.sendToBack();
+        if (isNew) {
+          var newPoint = { lat: lat, lng: lng };
+          visitedPoints.push(newPoint);
+          localStorage.setItem('visitedPoints', JSON.stringify(visitedPoints));
+          addVisitedMarker(lat, lng);
+          updatePath();
         }
-        // Draw horizontal lines
-        for (let i = 0; i <= height / gridSize; i++) {
-          const line = new fabric.Line(
-            [0, i * gridSize, width, i * gridSize],
-            {
-              stroke: "#ccc",
-              selectable: false,
-              evented: false,
-            }
-          );
-          line.isGrid = true;
-          canvas.add(line);
-          line.sendToBack();
+
+        // Update (or create) the current location marker
+        if (currentLocationMarker) {
+          currentLocationMarker.setLatLng([lat, lng]);
+        } else {
+          currentLocationMarker = L.marker([lat, lng]).addTo(map);
         }
+
+        // Optionally recenter the map on your current location
+        map.setView([lat, lng], 16);
+      }, function(error) {
+        console.error("Geolocation error:", error);
+      }, { enableHighAccuracy: true });
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+
+    // Add a custom control to clear all visited markers
+    var ClearControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function(map) {
+        var container = L.DomUtil.create('div', 'leaflet-control-clear');
+        container.innerHTML = 'Clear';
+        L.DomEvent.on(container, 'click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          if (confirm("Are you sure you want to clear visited points?")) {
+            visitedPoints = [];
+            localStorage.removeItem('visitedPoints');
+            visitedLayer.clearLayers();
+            updatePath();
+          }
+        });
+        return container;
       }
-
-      document
-        .getElementById("toggleGridBtn")
-        .addEventListener("click", () => {
-          gridVisible = !gridVisible;
-          drawGrid();
-          canvas.renderAll();
-        });
-
-      // --- Toolbar Buttons ---
-
-      // Add Unit: creates a red circle (can represent a unit)
-      document.getElementById("addUnitBtn").addEventListener("click", () => {
-        const circle = new fabric.Circle({
-          left: 100,
-          top: 100,
-          radius: 20,
-          fill: "red",
-          stroke: "black",
-          strokeWidth: 2,
-          hasControls: true,
-          hasBorders: true,
-        });
-        canvas.add(circle);
-      });
-
-      // Add Text: creates an editable text field
-      document.getElementById("addTextBtn").addEventListener("click", () => {
-        const text = new fabric.IText("New Text", {
-          left: 150,
-          top: 150,
-          fontSize: 20,
-          fill: "black",
-        });
-        canvas.add(text);
-        canvas.setActiveObject(text);
-        text.enterEditing();
-      });
-
-      // Set Background: allow the user to upload an image
-      document.getElementById("setBgBtn").addEventListener("click", () => {
-        document.getElementById("bgInput").click();
-      });
-      document.getElementById("bgInput").addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (f) {
-          const data = f.target.result;
-          fabric.Image.fromURL(data, (img) => {
-            // Scale background to fit canvas
-            img.scaleToWidth(canvas.getWidth());
-            img.scaleToHeight(canvas.getHeight());
-            canvas.setBackgroundImage(
-              img,
-              canvas.renderAll.bind(canvas),
-              { originX: "left", originY: "top" }
-            );
-          });
-        };
-        reader.readAsDataURL(file);
-      });
-
-      // Zoom In / Zoom Out / Reset View
-      document.getElementById("zoomInBtn").addEventListener("click", () => {
-        const zoom = canvas.getZoom() * 1.1;
-        canvas.setZoom(zoom);
-      });
-      document.getElementById("zoomOutBtn").addEventListener("click", () => {
-        const zoom = canvas.getZoom() / 1.1;
-        canvas.setZoom(zoom);
-      });
-      document.getElementById("resetViewBtn").addEventListener("click", () => {
-        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-        canvas.setZoom(1);
-      });
-
-      // Export the map as a PNG image
-      document.getElementById("exportBtn").addEventListener("click", () => {
-        const dataURL = canvas.toDataURL({
-          format: "png",
-          quality: 1,
-        });
-        const link = document.createElement("a");
-        link.href = dataURL;
-        link.download = "war_map.png";
-        link.click();
-      });
-
-      // Clear the canvas (with confirmation)
-      document.getElementById("clearBtn").addEventListener("click", () => {
-        if (confirm("Clear the map? This cannot be undone.")) {
-          canvas.clear();
-          canvas.setBackgroundColor(null, canvas.renderAll.bind(canvas));
-          if (gridVisible) drawGrid();
-        }
-      });
-
-      // --- Panning (click & drag on empty space) ---
-      let isPanning = false;
-      canvas.on("mouse:down", function (opt) {
-        // If an object was clicked, don’t pan.
-        if (opt.target) return;
-        isPanning = true;
-        canvas.selection = false;
-        canvas.defaultCursor = "move";
-        const evt = opt.e;
-        this.lastPosX = evt.clientX;
-        this.lastPosY = evt.clientY;
-      });
-      canvas.on("mouse:move", function (opt) {
-        if (isPanning && opt && opt.e) {
-          const e = opt.e;
-          const vpt = canvas.viewportTransform;
-          vpt[4] += e.clientX - this.lastPosX;
-          vpt[5] += e.clientY - this.lastPosY;
-          canvas.requestRenderAll();
-          this.lastPosX = e.clientX;
-          this.lastPosY = e.clientY;
-        }
-      });
-      canvas.on("mouse:up", function (opt) {
-        isPanning = false;
-        canvas.selection = true;
-        canvas.defaultCursor = "default";
-      });
-
-      // Initial grid drawing (if toggled on)
-      drawGrid();
-    </script>
-  </body>
+    });
+    map.addControl(new ClearControl());
+  </script>
+</body>
 </html>
