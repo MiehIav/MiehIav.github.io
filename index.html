@@ -1,128 +1,215 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>My Visited Places Tracker</title>
+  <meta charset="UTF-8">
+  <title>2025 Timeline of Crazy Events</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
+    /* Base styling */
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #1d1f20, #282a2e);
+      color: #fff;
       margin: 0;
       padding: 0;
     }
-    /* Simple styling for the clear button */
-    .leaflet-control-clear {
-      background-color: white;
-      padding: 5px;
-      cursor: pointer;
-      font-size: 14px;
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2 {
       text-align: center;
+    }
+    
+    /* Timeline styling */
+    .timeline {
+      position: relative;
+      margin: 50px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #fff;
+      transform: translateX(-50%);
+    }
+    .timeline-item {
+      position: relative;
+      margin: 20px 0;
+      width: 45%;
+      padding: 20px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .timeline-item:nth-child(odd) {
+      float: left;
+      clear: both;
+      text-align: right;
+      transform: translateX(-10%);
+    }
+    .timeline-item:nth-child(even) {
+      float: right;
+      clear: both;
+      text-align: left;
+      transform: translateX(10%);
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      z-index: 1;
+    }
+    .timeline-item:nth-child(odd)::before {
+      right: -8px;
+    }
+    .timeline-item:nth-child(even)::before {
+      left: -8px;
+    }
+    .event-date {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .event-title {
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+    .event-description {
+      font-size: 1em;
+    }
+    
+    /* Clear floats */
+    .clearfix::after {
+      content: "";
+      clear: both;
+      display: table;
+    }
+    
+    /* Add event form styling */
+    .add-event {
+      background: #333;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 50px;
+    }
+    .add-event input, .add-event textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 4px;
+    }
+    .add-event button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .add-event button:hover {
+      background: #45a049;
+    }
+    
+    @media (max-width: 768px) {
+      .timeline-item {
+        width: 90%;
+        margin: 20px auto;
+        text-align: left;
+        transform: none;
+      }
+      .timeline-item::before {
+        left: -8px;
+      }
+      .timeline::before {
+        left: 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <div class="container">
+    <h1>2025 Timeline of Crazy Events</h1>
+    <ul id="timeline" class="timeline clearfix"></ul>
+    
+    <div class="add-event">
+      <h2>Add New Event</h2>
+      <input type="date" id="event-date">
+      <input type="text" id="event-title" placeholder="Event Title">
+      <textarea id="event-description" placeholder="Event Description"></textarea>
+      <button onclick="addEvent()">Add Event</button>
+    </div>
+  </div>
   
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Initialize the map centered at [0,0] (will recenter once geolocation is found)
-    var map = L.map('map').setView([0, 0], 2);
-
-    // Add the satellite layer from Esri World Imagery
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri'
-    }).addTo(map);
-
-    // Retrieve visited points from localStorage or initialize an empty array
-    var visitedPoints = JSON.parse(localStorage.getItem('visitedPoints')) || [];
-
-    // Create a layer group to hold the visited markers
-    var visitedLayer = L.layerGroup().addTo(map);
-
-    // Function to add a visited marker (a semi-transparent circle)
-    function addVisitedMarker(lat, lng) {
-      L.circle([lat, lng], {
-        radius: 50,            // radius in meters
-        color: 'blue',
-        fillColor: '#30f',
-        fillOpacity: 0.3
-      }).addTo(visitedLayer);
+    // Retrieve stored events or start with an empty array
+    let events = JSON.parse(localStorage.getItem('timelineEvents')) || [];
+    
+    // Save events to localStorage
+    function saveEvents() {
+      localStorage.setItem('timelineEvents', JSON.stringify(events));
     }
-
-    // Draw any saved visited markers on startup
-    visitedPoints.forEach(function(point) {
-      addVisitedMarker(point.lat, point.lng);
-    });
-
-    // Create a polyline to connect visited points
-    var pathLine = L.polyline(visitedPoints.map(p => [p.lat, p.lng]), { color: 'red' }).addTo(map);
-
-    // Function to update the polyline when a new point is added
-    function updatePath() {
-      var latlngs = visitedPoints.map(p => [p.lat, p.lng]);
-      pathLine.setLatLngs(latlngs);
+    
+    // Render timeline events on the page
+    function renderTimeline() {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+      
+      // Sort events by date ascending
+      events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      events.forEach((event) => {
+        const li = document.createElement('li');
+        li.className = 'timeline-item';
+        li.innerHTML = `
+          <div class="event-date">${event.date}</div>
+          <div class="event-title">${event.title}</div>
+          <div class="event-description">${event.description}</div>
+        `;
+        timeline.appendChild(li);
+      });
     }
-
-    // Variable to keep track of your current location marker
-    var currentLocationMarker = null;
-
-    // Use the Geolocation API to watch your position
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(function(position) {
-        var lat = position.coords.latitude;
-        var lng = position.coords.longitude;
-
-        // Check if this location is already recorded (within ~50m tolerance)
-        var isNew = visitedPoints.every(function(point) {
-          return map.distance([lat, lng], [point.lat, point.lng]) > 50;
-        });
-
-        if (isNew) {
-          var newPoint = { lat: lat, lng: lng };
-          visitedPoints.push(newPoint);
-          localStorage.setItem('visitedPoints', JSON.stringify(visitedPoints));
-          addVisitedMarker(lat, lng);
-          updatePath();
-        }
-
-        // Update (or create) the current location marker
-        if (currentLocationMarker) {
-          currentLocationMarker.setLatLng([lat, lng]);
-        } else {
-          currentLocationMarker = L.marker([lat, lng]).addTo(map);
-        }
-
-        // Optionally recenter the map on your current location
-        map.setView([lat, lng], 16);
-      }, function(error) {
-        console.error("Geolocation error:", error);
-      }, { enableHighAccuracy: true });
-    } else {
-      alert("Geolocation is not supported by your browser.");
-    }
-
-    // Add a custom control to clear all visited markers
-    var ClearControl = L.Control.extend({
-      options: { position: 'topright' },
-      onAdd: function(map) {
-        var container = L.DomUtil.create('div', 'leaflet-control-clear');
-        container.innerHTML = 'Clear';
-        L.DomEvent.on(container, 'click', function(e) {
-          L.DomEvent.stopPropagation(e);
-          if (confirm("Are you sure you want to clear visited points?")) {
-            visitedPoints = [];
-            localStorage.removeItem('visitedPoints');
-            visitedLayer.clearLayers();
-            updatePath();
-          }
-        });
-        return container;
+    
+    // Add a new event from form input
+    function addEvent() {
+      const dateInput = document.getElementById('event-date');
+      const titleInput = document.getElementById('event-title');
+      const descriptionInput = document.getElementById('event-description');
+      
+      if (!dateInput.value || !titleInput.value || !descriptionInput.value) {
+        alert('Please fill in all fields.');
+        return;
       }
-    });
-    map.addControl(new ClearControl());
+      
+      const newEvent = {
+        date: dateInput.value,
+        title: titleInput.value,
+        description: descriptionInput.value
+      };
+      
+      events.push(newEvent);
+      saveEvents();
+      renderTimeline();
+      
+      // Clear the form fields
+      dateInput.value = '';
+      titleInput.value = '';
+      descriptionInput.value = '';
+    }
+    
+    // Initial render when page loads
+    renderTimeline();
   </script>
 </body>
 </html>
