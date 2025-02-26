@@ -1,215 +1,288 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>2025 Timeline of Crazy Events</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    /* Base styling */
-    body {
-      font-family: 'Arial', sans-serif;
-      background: linear-gradient(135deg, #1d1f20, #282a2e);
-      color: #fff;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    h1, h2 {
-      text-align: center;
-    }
-    
-    /* Timeline styling */
-    .timeline {
-      position: relative;
-      margin: 50px 0;
-      padding: 0;
-      list-style: none;
-    }
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: #fff;
-      transform: translateX(-50%);
-    }
-    .timeline-item {
-      position: relative;
-      margin: 20px 0;
-      width: 45%;
-      padding: 20px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
-    .timeline-item:nth-child(odd) {
-      float: left;
-      clear: both;
-      text-align: right;
-      transform: translateX(-10%);
-    }
-    .timeline-item:nth-child(even) {
-      float: right;
-      clear: both;
-      text-align: left;
-      transform: translateX(10%);
-    }
-    .timeline-item::before {
-      content: '';
-      position: absolute;
-      top: 20px;
-      width: 16px;
-      height: 16px;
-      background: #fff;
-      border-radius: 50%;
-      z-index: 1;
-    }
-    .timeline-item:nth-child(odd)::before {
-      right: -8px;
-    }
-    .timeline-item:nth-child(even)::before {
-      left: -8px;
-    }
-    .event-date {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .event-title {
-      font-size: 1.2em;
-      margin-bottom: 5px;
-    }
-    .event-description {
-      font-size: 1em;
-    }
-    
-    /* Clear floats */
-    .clearfix::after {
-      content: "";
-      clear: both;
-      display: table;
-    }
-    
-    /* Add event form styling */
-    .add-event {
-      background: #333;
-      padding: 20px;
-      border-radius: 8px;
-      margin-top: 50px;
-    }
-    .add-event input, .add-event textarea {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: none;
-      border-radius: 4px;
-    }
-    .add-event button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: #fff;
-      cursor: pointer;
-      font-size: 1em;
-    }
-    .add-event button:hover {
-      background: #45a049;
-    }
-    
-    @media (max-width: 768px) {
-      .timeline-item {
-        width: 90%;
-        margin: 20px auto;
-        text-align: left;
-        transform: none;
-      }
-      .timeline-item::before {
-        left: -8px;
-      }
-      .timeline::before {
-        left: 20px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>2025 Timeline of Crazy Events</h1>
-    <ul id="timeline" class="timeline clearfix"></ul>
-    
-    <div class="add-event">
-      <h2>Add New Event</h2>
-      <input type="date" id="event-date">
-      <input type="text" id="event-title" placeholder="Event Title">
-      <textarea id="event-description" placeholder="Event Description"></textarea>
-      <button onclick="addEvent()">Add Event</button>
-    </div>
-  </div>
+import React, { useState, useEffect } from 'react';
+import _ from 'lodash';
+
+// Component for the planet viewing application
+const PlanetViewer = () => {
+  // State for location, orientation, and planet data
+  const [location, setLocation] = useState(null);
+  const [orientation, setOrientation] = useState({ alpha: 0, beta: 0, gamma: 0 });
+  const [planets, setPlanets] = useState([]);
+  const [error, setError] = useState(null);
+  const [permissionStatus, setPermissionStatus] = useState({
+    location: 'pending',
+    orientation: 'pending'
+  });
+  const [compassHeading, setCompassHeading] = useState(0);
+  const [currentDate, setCurrentDate] = useState(new Date());
   
-  <script>
-    // Retrieve stored events or start with an empty array
-    let events = JSON.parse(localStorage.getItem('timelineEvents')) || [];
-    
-    // Save events to localStorage
-    function saveEvents() {
-      localStorage.setItem('timelineEvents', JSON.stringify(events));
+  // Calculate planet positions once we have a location
+  useEffect(() => {
+    if (location) {
+      calculatePlanetPositions(location, currentDate);
     }
+  }, [location, currentDate]);
+  
+  // Request location permission and set up
+  const requestLocationPermission = () => {
+    setPermissionStatus(prev => ({ ...prev, location: 'requesting' }));
     
-    // Render timeline events on the page
-    function renderTimeline() {
-      const timeline = document.getElementById('timeline');
-      timeline.innerHTML = '';
-      
-      // Sort events by date ascending
-      events.sort((a, b) => new Date(a.date) - new Date(b.date));
-      
-      events.forEach((event) => {
-        const li = document.createElement('li');
-        li.className = 'timeline-item';
-        li.innerHTML = `
-          <div class="event-date">${event.date}</div>
-          <div class="event-title">${event.title}</div>
-          <div class="event-description">${event.description}</div>
-        `;
-        timeline.appendChild(li);
-      });
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setPermissionStatus(prev => ({ ...prev, location: 'granted' }));
+        },
+        (error) => {
+          setError('Location permission denied. Please enable location services.');
+          setPermissionStatus(prev => ({ ...prev, location: 'denied' }));
+        }
+      );
+    } else {
+      setError('Geolocation is not supported by your browser.');
+      setPermissionStatus(prev => ({ ...prev, location: 'unavailable' }));
     }
+  };
+  
+  // Request device orientation permission and set up
+  const requestOrientationPermission = () => {
+    setPermissionStatus(prev => ({ ...prev, orientation: 'requesting' }));
     
-    // Add a new event from form input
-    function addEvent() {
-      const dateInput = document.getElementById('event-date');
-      const titleInput = document.getElementById('event-title');
-      const descriptionInput = document.getElementById('event-description');
-      
-      if (!dateInput.value || !titleInput.value || !descriptionInput.value) {
-        alert('Please fill in all fields.');
-        return;
+    // Check if DeviceOrientationEvent exists and if permission API is available
+    if (window.DeviceOrientationEvent) {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ requires explicit permission
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              setPermissionStatus(prev => ({ ...prev, orientation: 'granted' }));
+              window.addEventListener('deviceorientation', handleOrientation);
+            } else {
+              setError('Orientation permission denied. Please enable device orientation.');
+              setPermissionStatus(prev => ({ ...prev, orientation: 'denied' }));
+            }
+          })
+          .catch(error => {
+            setError('Error requesting orientation permission.');
+            setPermissionStatus(prev => ({ ...prev, orientation: 'error' }));
+          });
+      } else {
+        // Non-iOS or older iOS versions
+        window.addEventListener('deviceorientation', handleOrientation);
+        setPermissionStatus(prev => ({ ...prev, orientation: 'granted' }));
       }
-      
-      const newEvent = {
-        date: dateInput.value,
-        title: titleInput.value,
-        description: descriptionInput.value
-      };
-      
-      events.push(newEvent);
-      saveEvents();
-      renderTimeline();
-      
-      // Clear the form fields
-      dateInput.value = '';
-      titleInput.value = '';
-      descriptionInput.value = '';
+    } else {
+      setError('Device orientation is not supported by your browser.');
+      setPermissionStatus(prev => ({ ...prev, orientation: 'unavailable' }));
     }
+  };
+  
+  // Handle orientation data
+  const handleOrientation = (event) => {
+    // Alpha: compass direction (0-360)
+    // Beta: front-to-back tilt (-180 to 180)
+    // Gamma: left-to-right tilt (-90 to 90)
+    const { alpha, beta, gamma } = event;
     
-    // Initial render when page loads
-    renderTimeline();
-  </script>
-</body>
-</html>
+    setOrientation({ alpha, beta, gamma });
+    
+    // Calculate actual compass heading
+    // This is a simplified calculation; actual implementation would need
+    // to account for device orientation and magnetic declination
+    let heading = alpha;
+    if (typeof alpha !== 'undefined') {
+      // Convert alpha value to a compass heading (alpha is opposite of compass)
+      heading = (360 - alpha) % 360;
+      setCompassHeading(heading);
+    }
+  };
+  
+  // Calculate planetary positions using a simple model
+  // In a real app, you would use a proper astronomy library
+  const calculatePlanetPositions = (loc, date) => {
+    // This is a simplified placeholder
+    // In a real implementation, you'd use astronomy calculations
+    // based on the current date, time, and location
+    
+    const simulatedPlanets = [
+      {
+        name: 'Mercury',
+        altitude: 15 + Math.random() * 20, // Degrees above horizon
+        azimuth: (30 + Math.random() * 30) % 360, // Degrees from North
+        color: '#E5E5E5',
+        size: 4
+      },
+      {
+        name: 'Venus',
+        altitude: 20 + Math.random() * 30,
+        azimuth: (270 + Math.random() * 40) % 360,
+        color: '#FFF3B0',
+        size: 8
+      },
+      {
+        name: 'Mars',
+        altitude: 30 + Math.random() * 40,
+        azimuth: (120 + Math.random() * 60) % 360,
+        color: '#FF6B6B',
+        size: 6
+      },
+      {
+        name: 'Jupiter',
+        altitude: 35 + Math.random() * 25,
+        azimuth: (200 + Math.random() * 40) % 360,
+        color: '#F4A261',
+        size: 12
+      },
+      {
+        name: 'Saturn',
+        altitude: 25 + Math.random() * 30,
+        azimuth: (150 + Math.random() * 50) % 360,
+        color: '#E9C46A',
+        size: 10
+      }
+    ];
+    
+    setPlanets(simulatedPlanets);
+  };
+  
+  // Calculate if a planet is currently visible in the device's view
+  const isPlanetInView = (planetAzimuth, deviceAzimuth) => {
+    // Calculate the angular difference, accounting for 360° wrap-around
+    const diff = Math.abs((planetAzimuth - deviceAzimuth + 180) % 360 - 180);
+    // Consider planets within 30° of the center of view to be "visible"
+    return diff <= 30;
+  };
+  
+  // Render component based on current state
+  return (
+    <div className="flex flex-col items-center justify-start p-4 bg-gray-900 text-white min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Solar System Viewer</h1>
+      
+      {/* Permissions Section */}
+      {(permissionStatus.location !== 'granted' || permissionStatus.orientation !== 'granted') && (
+        <div className="mb-6 w-full max-w-md bg-gray-800 p-4 rounded-lg">
+          <h2 className="text-xl mb-2">Required Permissions</h2>
+          
+          {permissionStatus.location !== 'granted' && (
+            <button 
+              onClick={requestLocationPermission}
+              className="w-full mb-2 p-2 bg-blue-600 rounded hover:bg-blue-700"
+            >
+              {permissionStatus.location === 'pending' ? 'Allow Location Access' : 
+                permissionStatus.location === 'requesting' ? 'Requesting...' : 
+                'Retry Location Permission'}
+            </button>
+          )}
+          
+          {permissionStatus.orientation !== 'granted' && (
+            <button 
+              onClick={requestOrientationPermission}
+              className="w-full p-2 bg-blue-600 rounded hover:bg-blue-700"
+            >
+              {permissionStatus.orientation === 'pending' ? 'Allow Compass Access' : 
+                permissionStatus.orientation === 'requesting' ? 'Requesting...' : 
+                'Retry Orientation Permission'}
+            </button>
+          )}
+          
+          {error && (
+            <div className="mt-2 p-2 bg-red-800 rounded text-sm">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Location and Orientation Display */}
+      {location && (
+        <div className="mb-4 w-full max-w-md bg-gray-800 p-3 rounded-lg">
+          <div className="flex justify-between items-center">
+            <div>
+              <p>Lat: {location.latitude.toFixed(4)}°</p>
+              <p>Long: {location.longitude.toFixed(4)}°</p>
+            </div>
+            <div className="text-right">
+              <p>Heading: {compassHeading.toFixed(0)}°</p>
+              <p>Elevation: {orientation.beta ? orientation.beta.toFixed(0) : 0}°</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Compass Display */}
+      {permissionStatus.orientation === 'granted' && (
+        <div className="relative w-64 h-64 mb-6">
+          <div className="absolute inset-0 rounded-full border-2 border-gray-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div 
+              className="h-1 w-24 bg-red-500"
+              style={{ 
+                transform: `rotate(${compassHeading}deg)`,
+                transformOrigin: 'center left'
+              }}
+            ></div>
+          </div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1">N</div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-1">E</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 mb-1">S</div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 ml-1">W</div>
+        </div>
+      )}
+      
+      {/* Planet Viewer */}
+      {planets.length > 0 && (
+        <div className="w-full max-w-md">
+          <h2 className="text-xl mb-2">Planets Visible</h2>
+          <div className="grid grid-cols-1 gap-2">
+            {planets.map(planet => {
+              const isVisible = isPlanetInView(planet.azimuth, compassHeading);
+              return (
+                <div
+                  key={planet.name}
+                  className={`p-3 rounded-lg flex items-center justify-between ${
+                    isVisible ? 'bg-green-800' : 'bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div 
+                      className="rounded-full mr-3"
+                      style={{
+                        width: `${planet.size}px`,
+                        height: `${planet.size}px`,
+                        backgroundColor: planet.color
+                      }}
+                    ></div>
+                    <span>{planet.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <p>Az: {planet.azimuth.toFixed(0)}° {getDirectionFromAzimuth(planet.azimuth)}</p>
+                    <p>Alt: {planet.altitude.toFixed(0)}°</p>
+                    {isVisible && <span className="text-green-300 text-sm">In view</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      
+      {/* Instructions at the bottom */}
+      <div className="mt-6 text-sm text-gray-400">
+        <p>Hold your phone up and point it at the sky.</p>
+        <p>Green items are currently in your viewing direction.</p>
+        <p className="mt-2">Note: This is a demonstration with simulated planet positions.</p>
+      </div>
+    </div>
+  );
+};
+
+// Helper function to convert azimuth to cardinal direction
+function getDirectionFromAzimuth(azimuth) {
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const index = Math.round(azimuth / 45) % 8;
+  return directions[index];
+}
+
+export default PlanetViewer;
