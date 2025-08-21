@@ -1,360 +1,503 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Weather Hub Pro - Severe & Local Weather Dashboard</title>
-    <meta name="description" content="A professional, real-time dashboard for severe and local weather monitoring across North America. Access official data, radar, models, and more." />
-    
-    <!-- iOS & PWA Enhancements for a native app feel -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Weather Hub">
-    <meta name="theme-color" content="#0d1117">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300A4FF'/%3E%3Cstop offset='100%25' stop-color='%238A2BE2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='%230d1117'/%3E%3Cpath fill='url(%23g)' d='M50,20 Q60,20 70,30 T90,50 Q80,70 70,80 T50,90 Q40,80 30,70 T10,50 Q20,30 30,20 T50,20 Z' stroke='%23161b22' stroke-width='3'/%3E%3Ccircle cx='50' cy='50' r='10' fill='%23ffffff'/%3E%3C/svg%3E">
-
-    <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <style>
-        :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --border-primary: #30363d;
-            --text-primary: #e6edf3;
-            --text-secondary: #848d97;
-            --accent-primary: #2f81f7;
-            --accent-hover: #58a6ff;
-            --accent-gradient: linear-gradient(90deg, #2f81f7, #8A2BE2);
-            --accent-ca: #d83c3c;
-            --accent-us: #336bed;
-            --accent-global: #3fb950;
-            --accent-special: #c97d2c;
-            --radius: 12px;
-            --shadow: 0 8px 24px rgba(0,0,0,0.4);
-            --safe-area-top: env(safe-area-inset-top, 0px);
-            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-        }
-
-        *, *::before, *::after { box-sizing: border-box; }
-        
-        html { scroll-behavior: smooth; }
-
-        body {
-            margin: 0;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 16px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            opacity: 0;
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .dashboard-layout { display: grid; grid-template-columns: 1fr; }
-
-        /* --- Sidebar --- */
-        .sidebar {
-            background-color: rgba(22, 27, 34, 0.8);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            padding: 20px;
-            padding-top: calc(20px + var(--safe-area-top));
-            border-bottom: 1px solid var(--border-primary);
-        }
-        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-        .brand-logo { width: 40px; height: 40px; background: var(--accent-gradient); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-        .brand-logo .fa-solid { color: white; }
-        .brand-name h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
-        .brand-name p { font-size: 0.8rem; color: var(--text-secondary); margin: 0; }
-        .sidebar h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 20px 0 10px; font-weight: 600; }
-        .quick-access-list, .status-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-        .quick-access-list a { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; text-decoration: none; color: var(--text-primary); font-weight: 500; font-size: 0.9rem; transition: background-color 0.2s, color 0.2s; }
-        .quick-access-list a:hover { background-color: var(--bg-tertiary); color: var(--accent-hover); }
-        .quick-access-list a .fa-solid { width: 20px; text-align: center; color: var(--text-secondary); }
-        .status-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 8px 4px; }
-        #live-time { font-weight: 600; color: var(--accent-hover); }
-
-        /* --- Main Content --- */
-        .main-content { padding: 24px 16px calc(24px + var(--safe-area-bottom)); }
-        .main-header { display: flex; align-items: center; gap: 16px; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 12px 16px; margin: -24px -16px 24px -16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-primary); }
-        .search-bar { flex-grow: 1; display: flex; align-items: center; background-color: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-primary); padding: 0 12px; }
-        .search-bar .fa-solid { color: var(--text-secondary); }
-        .search-bar input { width: 100%; background: transparent; border: none; outline: none; color: var(--text-primary); padding: 12px 10px; font-size: 1rem; }
-        
-        .content-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
-        
-        /* Local Forecast Finder */
-        .forecast-finder { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius); padding: 20px; }
-        .forecast-finder h2 { margin: 0 0 16px 0; font-size: 1.25rem; }
-        #forecast-form { display: flex; flex-direction: column; gap: 12px; }
-        .form-input-group { display: flex; gap: 12px; }
-        #forecast-location { flex-grow: 1; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 12px; font-size: 1rem; color: var(--text-primary); }
-        #forecast-submit { background: var(--accent-primary); border: none; border-radius: 8px; color: white; font-weight: 600; padding: 12px 20px; cursor: pointer; transition: background-color 0.2s; }
-        #forecast-submit:hover { background: var(--accent-hover); }
-        .form-toggle-group { display: flex; gap: 10px; align-items: center; }
-        .form-toggle-group label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; }
-
-        .grid-section h2 { font-size: 1.25rem; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-primary); display: flex; align-items: center; gap: 10px; }
-        .grid-section .fa-brands, .grid-section .fa-solid { color: var(--text-secondary); }
-        .grid-section[data-accent="ca"] h2 .fa-brands { color: var(--accent-ca); }
-        .grid-section[data-accent="us"] h2 .fa-solid { color: var(--accent-us); }
-        .grid-section[data-accent="global"] h2 .fa-solid { color: var(--accent-global); }
-        .grid-section[data-accent="special"] h2 .fa-solid { color: var(--accent-special); }
-        
-        .links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-        .link-card { display: flex; flex-direction: column; text-decoration: none; color: var(--text-primary); background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius); padding: 16px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
-        .link-card:hover { transform: translateY(-4px); border-color: var(--accent-primary); box-shadow: 0 4px 12px rgba(47,129,247,0.1); }
-        .link-card-header { display: flex; align-items: center; gap: 12px; font-weight: 600; }
-        .link-card-header .fa-solid { color: var(--accent-primary); }
-        .link-card-description { font-size: 0.85rem; color: var(--text-secondary); margin: 8px 0 0 0; flex-grow: 1; }
-        .link-card-footer { margin-top: 12px; font-size: 0.75rem; color: var(--text-secondary); text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
-        .link-card-footer .fa-solid { font-size: 0.65rem; }
-        
-        .no-results { display: none; text-align:center; padding: 40px; background: var(--bg-secondary); border-radius: 12px; grid-column: 1 / -1; }
-        .no-results h3 { margin-top: 0;}
-
-        footer { text-align: center; font-size: 0.8rem; color: var(--text-secondary); padding: 24px 16px; border-top: 1px solid var(--border-primary); margin-top: 24px; }
-        footer a { color: var(--accent-hover); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-
-        /* Desktop Layout */
-        @media (min-width: 1024px) {
-            .dashboard-layout { grid-template-columns: 280px 1fr; height: 100vh; }
-            .sidebar { border-bottom: none; border-right: 1px solid var(--border-primary); position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-            .main-content { height: 100vh; overflow-y: auto; padding: 0 24px; }
-            .main-header { margin: 0 -24px 24px -24px; padding: 16px 24px; top: 0; }
-            #forecast-form { flex-direction: row; }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weather Hub Pro — Link Dashboard</title>
+  <meta name="description" content="Weather Hub Pro — Ultimate professional weather dashboards, model tools, feeds and developer APIs — curated link index and quick-access dashboard." />
+  <!-- Fonts & Icons (GitHub Pages friendly) -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" integrity="sha512-W6k3+...placeholder..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa4b2;
+      --accent:#2dd4bf;
+      --glass: rgba(255,255,255,0.03);
+      --radius:12px;
+      --maxw:1100px;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      background: linear-gradient(180deg,#051024 0%, #081427 60%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:32px 20px;
+      display:flex;
+      justify-content:center;
+    }
+    .wrap{width:100%;max-width:var(--maxw);}
+    header{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:20px;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:64px;height:64px;
+      border-radius:12px;
+      background:linear-gradient(135deg,var(--accent),#60a5fa);
+      display:grid;
+      place-items:center;
+      color:#022;
+      font-weight:700;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      font-size:20px;
+    }
+    h1{margin:0;font-size:20px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .controls{
+      margin-top:18px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .search{
+      flex:1;
+      min-width:220px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      background:var(--glass);
+      padding:8px;border-radius:10px;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .search input{
+      background:transparent;border:0;outline:0;color:inherit;font-size:14px;width:100%;
+    }
+    .btn{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:inherit;padding:8px 12px;border-radius:10px;
+      cursor:pointer;font-weight:600;
+    }
+    .grid{
+      display:grid;
+      gap:14px;
+      grid-template-columns: 1fr 320px;
+      margin-top:20px;
+    }
+    .main{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:var(--radius);
+      padding:18px;
+      border: 1px solid rgba(255,255,255,0.03);
+      min-height:420px;
+    }
+    .sidebar{
+      background:var(--card);
+      padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);
+      height:100%;
+    }
+    .category{
+      margin-bottom:16px;
+    }
+    .category h3{
+      margin:0 0 8px 0;font-size:15px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .cards{
+      display:grid;
+      gap:10px;
+    }
+    .card{
+      background:rgba(255,255,255,0.02);
+      padding:12px;border-radius:10px;
+      display:flex;align-items:center;gap:12px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .card .meta{font-size:13px;color:var(--muted)}
+    .card .actions{margin-left:auto;display:flex;gap:8px}
+    .chip{font-size:12px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.02)}
+    .small{font-size:12px;color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+    .links-list{display:flex;flex-direction:column;gap:8px}
+    .yt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+    /* responsive */
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+      .sidebar{order:2}
+    }
+    /* subtle hover */
+    .card:hover{transform:translateY(-4px);transition:all .18s ease}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    .muted{color:var(--muted)}
+    /* accessibility focus */
+    a:focus, button:focus, input:focus{outline:3px solid rgba(45,212,191,0.12);outline-offset:2px}
+    .download {
+      display:flex;gap:8px;align-items:center;margin-top:12px;
+    }
+    .padded{padding:12px}
+    pre{white-space:pre-wrap;word-break:break-word; max-height:260px; overflow:auto; background: rgba(0,0,0,0.2); padding:10px;border-radius:8px}
+  </style>
 </head>
 <body>
+  <div class="wrap" role="application" aria-label="Weather Hub Pro Link Dashboard">
+    <header>
+      <div class="brand" aria-hidden="false">
+        <div class="logo" title="Weather Hub Pro">WH</div>
+        <div>
+          <h1>Weather Hub Pro — Link Dashboard</h1>
+          <p class="lead">Ultimate Professional Edition — curated agencies, model tools, feeds and dev APIs for meteorologists & devs.</p>
+        </div>
+      </div>
+    </header>
 
-    <div class="dashboard-layout">
-        <aside class="sidebar">
-            <div class="brand">
-                <div class="brand-logo"><i class="fa-solid fa-satellite-dish"></i></div>
-                <div class="brand-name">
-                    <h1>Weather Hub Pro</h1>
-                    <p>Severe & Local Data</p>
-                </div>
-            </div>
-            <h2>Quick Access</h2>
-            <ul class="quick-access-list">
-                <li><a href="https://weather.gc.ca" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-cloud-sun-rain"></i> ECCC (Canada)</a></li>
-                <li><a href="https://www.weather.gov" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-house-chimney-medical"></i> NWS (USA)</a></li>
-                <li><a href="https://www.spc.noaa.gov/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-bolt-lightning"></i> NOAA SPC</a></li>
-                <li><a href="https://radar.weather.gov/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-satellite-dish"></i> NWS Radar</a></li>
-                <li><a href="https://www.windy.com" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-wind"></i> Windy.com</a></li>
-            </ul>
-            <h2>System Status</h2>
-            <ul class="status-list">
-                <li class="status-item"><span>Data Sources</span><span><i class="fa-solid fa-circle" style="color:#3fb950; font-size: 0.7em;"></i> Online</span></li>
-                <li class="status-item"><span>Local Time</span><span id="live-time">--:--:--</span></li>
-            </ul>
-        </aside>
+    <div class="controls">
+      <div class="search" title="Search links">
+        <i class="fa fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="q" placeholder="Search (e.g., radar, NOAA, ECMWF, radar, API)" aria-label="Search links" />
+        <button id="clear" class="btn" title="Clear search" aria-label="Clear search">Clear</button>
+      </div>
 
-        <main class="main-content">
-            <header class="main-header">
-                <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input id="searchBox" placeholder="Search all links... (e.g., radar, models, severe)" type="text">
-                </div>
-            </header>
-
-            <div class="content-grid">
-                
-                <section class="forecast-finder">
-                    <h2>Local Forecast Finder</h2>
-                    <form id="forecast-form">
-                        <div class="form-input-group">
-                            <input type="text" id="forecast-location" placeholder="Enter City, Postal Code, or ZIP..." required>
-                            <button type="submit" id="forecast-submit">Find</button>
-                        </div>
-                        <div class="form-toggle-group">
-                            <label><input type="radio" name="country" value="ca" checked> Canada (ECCC)</label>
-                            <label><input type="radio" name="country" value="us"> USA (NWS)</label>
-                        </div>
-                    </form>
-                </section>
-
-                <section class="grid-section" data-accent="ca" data-tags="canada eccc">
-                    <h2><i class="fa-brands fa-canadian-maple-leaf"></i>Canada - Core Services</h2>
-                    <div class="links-grid">
-                        <a href="https://weather.gc.ca/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="eccc forecasts warnings">
-                            <div class="link-card-header"><i class="fa-solid fa-globe"></i> ECCC National Portal</div>
-                            <p class="link-card-description">Official forecasts, warnings, and weather information from Environment & Climate Change Canada.</p>
-                            <div class="link-card-footer">weather.gc.ca <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://weather.gc.ca/warnings/index_e.html" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="alerts warnings public">
-                            <div class="link-card-header"><i class="fa-solid fa-bullhorn"></i> Public Weather Alerts</div>
-                            <p class="link-card-description">A map view of active weather alerts and statements for all of Canada.</p>
-                            <div class="link-card-footer">ECCC <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://weather.gc.ca/radar/index_e.html" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="radar national">
-                            <div class="link-card-header"><i class="fa-solid fa-satellite-dish"></i> National Radar Composite</div>
-                            <p class="link-card-description">View the national radar mosaic to track precipitation across the country.</p>
-                            <div class="link-card-footer">ECCC <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://kamala.cod.edu/Canada/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="significant weather discussions severe">
-                            <div class="link-card-header"><i class="fa-solid fa-file-lines"></i> Technical Discussions</div>
-                            <p class="link-card-description">Text products (FOCN45 etc.) from forecasters about significant weather expectations.</p>
-                            <div class="link-card-footer">COD/ECCC <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                    </div>
-                </section>
-                
-                <section class="grid-section" data-accent="us" data-tags="usa noaa nws spc wpc severe">
-                    <h2><i class="fa-solid fa-flag-usa"></i>USA - Severe Weather & Forecasts</h2>
-                    <div class="links-grid">
-                        <a href="https://www.spc.noaa.gov/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="spc storm prediction center convective outlooks">
-                            <div class="link-card-header"><i class="fa-solid fa-bolt-lightning"></i> NOAA Storm Prediction Center</div>
-                            <p class="link-card-description">The official US source for tornado/severe thunderstorm watches and convective outlooks.</p>
-                            <div class="link-card-footer">spc.noaa.gov <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="wpc weather prediction center qpf flooding winter">
-                            <div class="link-card-header"><i class="fa-solid fa-cloud-showers-heavy"></i> NOAA Weather Prediction Center</div>
-                            <p class="link-card-description">Provides analysis for precipitation, flooding, and winter weather across the US.</p>
-                            <div class="link-card-footer">wpc.ncep.noaa.gov <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="nhc national hurricane center tropical cyclones">
-                            <div class="link-card-header"><i class="fa-solid fa-hurricane"></i> National Hurricane Center</div>
-                            <p class="link-card-description">Official advisories, forecasts, and data for tropical cyclones in the Atlantic and Pacific.</p>
-                            <div class="link-card-footer">nhc.noaa.gov <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.weather.gov/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="nws national weather service warnings">
-                            <div class="link-card-header"><i class="fa-solid fa-house-chimney-medical"></i> National Weather Service</div>
-                            <p class="link-card-description">Main portal for local forecasts, watches, and warnings from NWS offices across the USA.</p>
-                            <div class="link-card-footer">weather.gov <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                    </div>
-                </section>
-
-                <section class="grid-section" data-accent="global" data-tags="global tools radar satellite models">
-                    <h2><i class="fa-solid fa-earth-americas"></i>Global Observation & Model Tools</h2>
-                    <div class="links-grid">
-                        <a href="https://weather.cod.edu/satrad/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="satellite goes cod advanced">
-                            <div class="link-card-header"><i class="fa-solid fa-satellite"></i> College of DuPage Satellite</div>
-                            <p class="link-card-description">Advanced GOES satellite imagery browser with a wide range of spectral bands and products.</p>
-                            <div class="link-card-footer">COD <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="satellite imagery noaa star">
-                            <div class="link-card-header"><i class="fa-solid fa-layer-group"></i> NOAA STAR / GOES Imagery</div>
-                            <p class="link-card-description">Official portal for imagery and data from the GOES East/West satellite constellations.</p>
-                            <div class="link-card-footer">NOAA <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.windy.com" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="windy models ecmwf gfs">
-                            <div class="link-card-header"><i class="fa-solid fa-wind"></i> Windy.com</div>
-                            <p class="link-card-description">Interactive map for visualizing global weather models like ECMWF, GFS, and more.</p>
-                            <div class="link-card-footer">Windy <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.pivotalweather.com/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="pivotal weather models pro">
-                            <div class="link-card-header"><i class="fa-solid fa-chart-line"></i> Pivotal Weather</div>
-                            <p class="link-card-description">A professional-grade interface for viewing and comparing various forecast models.</p>
-                            <div class="link-card-footer">Pivotal <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                    </div>
-                </section>
-                
-                <section class="grid-section" data-accent="special" data-tags="specialized hydrology air quality fire webcams">
-                    <h2><i class="fa-solid fa-binoculars"></i>Specialized & Environmental Data</h2>
-                    <div class="links-grid">
-                         <a href="https://wateroffice.ec.gc.ca/mainmenu/real_time_data_index_e.html" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="hydrology flood rivers gauges canada">
-                            <div class="link-card-header"><i class="fa-solid fa-house-flood-water"></i> Water Survey of Canada</div>
-                            <p class="link-card-description">Real-time hydrometric data and river level gauges across Canada.</p>
-                            <div class="link-card-footer">Gov of Canada <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://cwfis.cfs.nrcan.gc.ca/interactive-map" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="fire smoke wildfires canada">
-                            <div class="link-card-header"><i class="fa-solid fa-fire"></i> Canadian Wildfire Info</div>
-                            <p class="link-card-description">Interactive map of fire danger, hotspots, and weather from CWFIS.</p>
-                            <div class="link-card-footer">NRCan <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.airnow.gov/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="airnow aqi air quality smoke usa">
-                            <div class="link-card-header"><i class="fa-solid fa-smog"></i> AirNow.gov (USA)</div>
-                            <p class="link-card-description">Real-time Air Quality Index (AQI) data and smoke plume maps for the United States.</p>
-                            <div class="link-card-footer">EPA <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                        <a href="https://www.drivebc.ca/" target="_blank" rel="noopener noreferrer" class="link-card item" data-tags="webcams 511 roads canada drivebc">
-                            <div class="link-card-header"><i class="fa-solid fa-camera-retro"></i> Canada Road Cams (511)</div>
-                            <p class="link-card-description">Links to provincial 511 services (e.g., DriveBC, 511 Alberta) for road conditions and cameras.</p>
-                            <div class="link-card-footer">Provincial Gov <i class="fa-solid fa-arrow-up-right-from-square"></i></div>
-                        </a>
-                    </div>
-                </section>
-                
-                <div class="no-results" id="noResults">
-                    <h3>No results found</h3>
-                    <p class="text-secondary">Your search did not match any links. Try a broader term like "radar" or "severe".</p>
-                </div>
-
-            </div>
-            
-            <footer>
-                <p>Weather Hub Pro is a curated dashboard of public weather data. It is not an official warning service. <br>Always rely on official alerts from national agencies like <a href="https://weather.gc.ca" target="_blank" rel="noopener noreferrer">ECCC</a> and <a href="https://www.weather.gov" target="_blank" rel="noopener noreferrer">NOAA</a>.</p>
-            </footer>
-        </main>
+      <div style="display:flex;gap:8px">
+        <button id="copyAll" class="btn" title="Copy all links to clipboard">Copy All Links</button>
+        <button id="downloadIndex" class="btn" title="Download Link Index file">Download Index</button>
+      </div>
     </div>
 
-    <script>
-        // Live Clock
-        const timeElement = document.getElementById('live-time');
-        function updateTime() {
-            const now = new Date();
-            timeElement.textContent = now.toLocaleTimeString();
-        }
-        setInterval(updateTime, 1000);
-        updateTime();
+    <div class="grid" role="group" aria-label="Dashboard content">
+      <main class="main" id="main">
+        <!-- Dynamic categories inserted here -->
+        <section class="category">
+          <h3><i class="fa-solid fa-earth-americas"></i>&nbsp;Core Agencies</h3>
+          <div class="cards" id="core-agencies"></div>
+        </section>
 
-        // Search/filter logic
-        const searchBox = document.getElementById('searchBox');
-        const items = Array.from(document.querySelectorAll('.item'));
-        const sections = Array.from(document.querySelectorAll('.grid-section'));
-        const noResults = document.getElementById('noResults');
+        <section class="category">
+          <h3><i class="fa-solid fa-satellite"></i>&nbsp;Model & Observation Tools</h3>
+          <div class="cards" id="model-tools"></div>
+        </section>
 
-        function filter(query = '') {
-            query = query.trim().toLowerCase();
-            let visibleItems = 0;
-            sections.forEach(section => {
-                let visibleInSection = 0;
-                const sectionItems = section.querySelectorAll('.item');
-                sectionItems.forEach(item => {
-                    const tags = (item.dataset.tags || '').toLowerCase();
-                    const text = (item.innerText || '').toLowerCase();
-                    const show = !query || tags.includes(query) || text.includes(query);
-                    item.style.display = show ? '' : 'none';
-                    if (show) { visibleInSection++; visibleItems++; }
-                });
-                section.style.display = visibleInSection > 0 ? '' : 'none';
-            });
-            noResults.style.display = visibleItems === 0 && query.length > 0 ? 'block' : 'none';
-        }
-        searchBox.addEventListener('input', e => filter(e.target.value));
-        window.addEventListener('keydown', (e) => {
-            if (e.key === '/') { if (document.activeElement !== searchBox) { e.preventDefault(); searchBox.focus(); } }
-        });
+        <section class="category">
+          <h3><i class="fa-solid fa-rss"></i>&nbsp;Feeds & Developer</h3>
+          <div class="cards" id="feeds-dev"></div>
+        </section>
 
-        // Forecast Finder Logic
-        const forecastForm = document.getElementById('forecast-form');
-        forecastForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const location = document.getElementById('forecast-location').value.trim();
-            const country = document.querySelector('input[name="country"]:checked').value;
-            if (!location) return;
+        <section class="category">
+          <h3><i class="fa-solid fa-flask"></i>&nbsp;Specialized</h3>
+          <div class="cards" id="specialized"></div>
+        </section>
 
-            let url;
-            if (country === 'ca') {
-                url = `https://weather.gc.ca/search/search_e.html?searchField=${encodeURIComponent(location)}`;
-            } else {
-                url = `https://forecast.weather.gov/zipcity.php?inputstring=${encodeURIComponent(location)}`;
-            }
-            window.open(url, '_blank');
-        });
-    </script>
+        <section class="category">
+          <h3><i class="fa-brands fa-youtube"></i>&nbsp;YouTube / Chasers</h3>
+          <div class="cards" id="youtube"></div>
+        </section>
+
+        <section class="category">
+          <h3><i class="fa-solid fa-code"></i>&nbsp;Additional Developer APIs (recommended)</h3>
+          <div class="cards" id="extra-apis"></div>
+          <p class="small muted">Docs & developer-friendly APIs: OpenWeatherMap One Call, Meteostat JSON, MET Norway (api.met.no), Visual Crossing — all great options for professional dashboards and historical data. Sources: official docs.  [oai_citation:4‡OpenWeatherMap](https://openweathermap.org/api?utm_source=chatgpt.com) [oai_citation:5‡Meteostat](https://dev.meteostat.net/api/?utm_source=chatgpt.com) [oai_citation:6‡MET Weather API](https://api.met.no/weatherapi/documentation?utm_source=chatgpt.com) [oai_citation:7‡Visual Crossing](https://www.visualcrossing.com/resources/documentation/weather-api/weather-api-documentation/?utm_source=chatgpt.com)</p>
+        </section>
+
+        <section class="category padded" aria-label="Usage & examples">
+          <h3><i class="fa-solid fa-circle-info"></i>&nbsp;Usage notes & quick examples</h3>
+          <p class="small muted">This dashboard is a curated link hub. Below are example fetch snippets (replace <code>YOUR_KEY</code> and coordinates as needed). For no-key options, consider <code>open-meteo.com</code> or MET Norway (see above).</p>
+
+          <pre><code id="example-code">// Example: fetch Open-Meteo (no API key)
+fetch('https://api.open-meteo.com/v1/forecast?latitude=49.8951&longitude=-97.1384&hourly=temperature_2m,relativehumidity_2m')
+  .then(r =&gt; r.json())
+  .then(data =&gt; console.log(data));
+
+// Example: fetch OpenWeatherMap (requires API key)
+fetch('https://api.openweathermap.org/data/2.5/onecall?lat=49.8951&lon=-97.1384&units=metric&appid=YOUR_KEY')
+  .then(r =&gt; r.json()).then(d =&gt; console.log(d));</code></pre>
+
+          <p class="small muted">Tip: When using MET Norway (api.met.no), set a descriptive <code>User-Agent</code> header to avoid 403 errors (their docs require it).</p>
+        </section>
+      </main>
+
+      <aside class="sidebar" aria-label="Sidebar">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <h3 style="margin:0 0 6px 0">Quick Index (click to open)</h3>
+            <div class="links-list" id="quick-list"></div>
+          </div>
+
+          <div>
+            <h3 style="margin:0 0 6px 0">Download / Copy</h3>
+            <div class="download">
+              <button id="dlBtn" class="btn">Download Link Index</button>
+              <button id="copyBtn" class="btn">Copy Text</button>
+            </div>
+            <div style="margin-top:10px" class="small muted">Index file contains all links in plain text (easy import into bookmarks or other dashboards).</div>
+          </div>
+
+          <div>
+            <h3 style="margin:0 0 6px 0">Quick README</h3>
+            <pre style="background:transparent;border:0;padding:0;margin:0;color:var(--muted);font-size:13px">
+- Paste this file into your GitHub Pages repo as index.html
+- Edit link descriptions inside the <code>links</code> array in the JS
+- Replace any example API key placeholders with your own
+- Use browser devtools to preview fetch examples
+            </pre>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div>Built for GitHub Pages • Accessible, responsive & copy-friendly • <span class="muted">Weather Hub Pro — Link Index</span></div>
+    </footer>
+  </div>
+
+  <script>
+    // ---------- Link data (source: user-provided list) ----------
+    // You can edit names or add descriptions here.
+    const links = [
+      // Core Agencies
+      {category:'Core Agencies', title:'Environment Canada', url:'https://weather.gc.ca', desc:'Environment and Climate Change Canada - official forecasts and warnings.'},
+      {category:'Core Agencies', title:'NOAA SPC', url:'https://www.spc.noaa.gov', desc:'Storm Prediction Center (US) — convective outlooks & mesoscale info.'},
+      {category:'Core Agencies', title:'NOAA Weather', url:'https://www.weather.gov', desc:'National Weather Service — forecasts, alerts and radar.'},
+      {category:'Core Agencies', title:'NOAA NHC', url:'https://www.nhc.noaa.gov', desc:'National Hurricane Center — tropical cyclone guidance.'},
+      {category:'Core Agencies', title:'UK Met Office', url:'https://www.metoffice.gov.uk', desc:'UK national weather service.'},
+      {category:'Core Agencies', title:'DWD', url:'https://www.dwd.de', desc:'Deutscher Wetterdienst — Germany\'s national weather service.'},
+      {category:'Core Agencies', title:'JMA', url:'https://www.jma.go.jp', desc:'Japan Meteorological Agency.'},
+      {category:'Core Agencies', title:'BOM', url:'https://www.bom.gov.au', desc:'Australian Bureau of Meteorology.'},
+      {category:'Core Agencies', title:'ECMWF', url:'https://www.ecmwf.int', desc:'European Centre for Medium-Range Weather Forecasts.'},
+
+      // Models & Tools
+      {category:'Model & Observation Tools', title:'COC Sat/Radar', url:'https://weather.cod.edu/satrad/', desc:'Satellite & radar visualizations.'},
+      {category:'Model & Observation Tools', title:'Tropical Tidbits Models', url:'https://www.tropicaltidbits.com/analysis/models/', desc:'Model analysis and comparison.'},
+      {category:'Model & Observation Tools', title:'Windy', url:'https://www.windy.com', desc:'Interactive global map with models & overlays.'},
+      {category:'Model & Observation Tools', title:'NASA Worldview', url:'https://worldview.earthdata.nasa.gov/', desc:'Satellite imagery and overlays.'},
+      {category:'Model & Observation Tools', title:'Pivotal Weather', url:'https://www.pivotalweather.com/', desc:'Model visualization & tools.'},
+      {category:'Model & Observation Tools', title:'DWD OpenData', url:'https://opendata.dwd.de', desc:'DWD model & observation datasets.'},
+      {category:'Model & Observation Tools', title:'NOAA NOMADS', url:'https://nomads.ncep.noaa.gov', desc:'Model output access.'},
+      {category:'Model & Observation Tools', title:'NOAA GFS on AWS', url:'https://registry.opendata.aws/noaa-gfs', desc:'GFS via AWS Open Data.'},
+      {category:'Model & Observation Tools', title:'Open-Meteo', url:'https://open-meteo.com', desc:'Free weather forecast API (no key required).'},
+
+      // Feeds & Developer
+      {category:'Feeds & Developer', title:'ECCC Alerts (latest)', url:'https://ecalertme.weather.gc.ca/warning-latest_en.php', desc:'Canadian warnings feed.'},
+      {category:'Feeds & Developer', title:'Weather.gov API', url:'https://api.weather.gov', desc:'US NWS REST API & endpoints.'},
+      {category:'Feeds & Developer', title:'NOAA Map Services', url:'https://mapservices.weather.noaa.gov', desc:'NOAA map & tile services.'},
+      {category:'Feeds & Developer', title:'NOAA SPC Mesoscale (MapServer)', url:'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/spc_mesoscale_discussion/MapServer', desc:'SPC Mesoscale Vector tiles.'},
+
+      // Specialized
+      {category:'Specialized', title:'Water Office (ECCC)', url:'https://wateroffice.ec.gc.ca/mainmenu/real_time_data_index_e.html', desc:'Canadian hydrometric real-time data.'},
+      {category:'Specialized', title:'Canadian Wildland Fire Info (CWFIS)', url:'https://cwfis.cfs.nrcan.gc.ca/interactive-map', desc:'Fire and fuel moisture tools.'},
+      {category:'Specialized', title:'AirNow (US)', url:'https://www.airnow.gov/', desc:'Air quality maps & data.'},
+      {category:'Specialized', title:'Manitoba 511', url:'https://www.manitoba511.ca/', desc:'Traffic & road conditions (Manitoba).'},
+      {category:'Specialized', title:'Manitoba EMO', url:'https://www.gov.mb.ca/emo/index.html', desc:'Manitoba Emergency Measures.'},
+
+      // YouTube / Chasers
+      {category:'YouTube / Chasers', title:'Ryan Hall', url:'https://www.youtube.com/@RyanHallYall', desc:'Storm chasing & educational videos.'},
+      {category:'YouTube / Chasers', title:'MaxVelocityWX', url:'https://www.youtube.com/@MaxVelocityWX', desc:'Storm chaser channel.'},
+      {category:'YouTube / Chasers', title:'Reed Timmer', url:'https://www.youtube.com/user/ReedTimmer7', desc:'Famous storm chaser.'},
+      {category:'YouTube / Chasers', title:'Mike Olbinski', url:'https://www.youtube.com/user/mikeolbinski', desc:'Weather videography.'},
+      {category:'YouTube / Chasers', title:'Sean Casey', url:'https://www.youtube.com/c/SeanCaseyStormChasers', desc:'Storm chasing & documentaries.'},
+      {category:'YouTube / Chasers', title:'James Spann', url:'https://www.youtube.com/user/JamesSpann', desc:'Local weather broadcasting.'},
+      {category:'YouTube / Chasers', title:'NOAA (YouTube)', url:'https://www.youtube.com/@NOAA', desc:'Official NOAA channel.'},
+      {category:'YouTube / Chasers', title:'The Weather Channel (YouTube)', url:'https://www.youtube.com/@TheWeatherChannel', desc:'Weather news & live updates.'},
+
+      // Extra (added by assistant)
+      {category:'Additional APIs', title:'OpenWeatherMap (One Call)', url:'https://openweathermap.org/api', desc:'Comprehensive commercial & free-tier weather APIs (One Call, Current, Forecast).'},
+      {category:'Additional APIs', title:'Meteostat JSON API', url:'https://dev.meteostat.net/api/', desc:'Free historical weather & climate data for stations & coordinates.'},
+      {category:'Additional APIs', title:'MET Norway (api.met.no)', url:'https://api.met.no', desc:'Open weather API from MET Norway — CC-licensed data; requires descriptive User-Agent.'},
+      {category:'Additional APIs', title:'Visual Crossing Weather API', url:'https://www.visualcrossing.com/weather-api/', desc:'Commercial API with strong historical & timeline support.'}
+    ];
+
+    // ---------- DOM helpers ----------
+    function el(tag, cls, txt){const e=document.createElement(tag);if(cls)e.className=cls; if(txt!==undefined) e.innerHTML=txt; return e;}
+
+    // populate cards
+    function render() {
+      const buckets = {
+        'Core Agencies': document.getElementById('core-agencies'),
+        'Model & Observation Tools': document.getElementById('model-tools'),
+        'Feeds & Developer': document.getElementById('feeds-dev'),
+        'Specialized': document.getElementById('specialized'),
+        'YouTube / Chasers': document.getElementById('youtube'),
+        'Additional APIs': document.getElementById('extra-apis')
+      };
+      // clear
+      Object.values(buckets).forEach(b => b.innerHTML = '');
+
+      // fill
+      links.forEach(item => {
+        const container = buckets[item.category] || document.getElementById('core-agencies');
+        const c = el('div','card','');
+        const ico = el('div','','<i class="fa-solid fa-link"></i>');
+        ico.setAttribute('aria-hidden','true');
+        const info = el('div','');
+        const a = el('a','','<strong>' + escapeHtml(item.title) + '</strong>');
+        a.href = item.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.setAttribute('aria-label', item.title + ' (opens in new tab)');
+        a.style.color = 'inherit';
+        const d = el('div','meta', escapeHtml(item.desc || ''));
+        info.appendChild(a);
+        info.appendChild(d);
+        const actions = el('div','actions');
+        const bOpen = el('button','btn btn-ghost','Open');
+        bOpen.onclick = ()=> window.open(item.url,'_blank','noopener');
+        const bCopy = el('button','btn btn-ghost','Copy');
+        bCopy.onclick = ()=> navigator.clipboard.writeText(item.url).then(()=>{flash('Copied to clipboard')});
+        actions.appendChild(bCopy);
+        actions.appendChild(bOpen);
+        c.appendChild(ico);
+        c.appendChild(info);
+        c.appendChild(actions);
+        container.appendChild(c);
+      });
+
+      // quick list (sidebar) - show top 12 quick links
+      const q = document.getElementById('quick-list');
+      q.innerHTML = '';
+      links.slice(0,12).forEach(it=>{
+        const a = el('a','chip', escapeHtml(it.title));
+        a.href = it.url; a.target='_blank'; a.rel='noopener noreferrer';
+        q.appendChild(a);
+      });
+    }
+
+    // escape helper
+    function escapeHtml(s){
+      if(!s) return '';
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ---------- Search / filter ----------
+    const input = document.getElementById('q');
+    input.addEventListener('input', e => filter(e.target.value));
+    document.getElementById('clear').addEventListener('click', ()=>{input.value='';filter('')});
+
+    function filter(q){
+      const ql = q.trim().toLowerCase();
+      document.querySelectorAll('.card').forEach(card=>{
+        const text = card.innerText.toLowerCase();
+        card.style.display = (ql === '' || text.includes(ql)) ? '' : 'none';
+      });
+    }
+
+    // ---------- Copy all links ----------
+    document.getElementById('copyAll').addEventListener('click', copyAll);
+    async function copyAll(){
+      const text = links.map(l => `${l.title} — ${l.url}`).join('\\n');
+      await navigator.clipboard.writeText(text);
+      flash('All links copied to clipboard');
+    }
+
+    // ---------- Download index (text file) ----------
+    const providedIndex = `Weather Hub Pro — Link Index (Ultimate Professional Edition)
+
+This text file contains all links included in the HTML dashboard for quick copy/paste.
+
+Core Agencies:
+- https://weather.gc.ca
+- https://www.spc.noaa.gov
+- https://www.weather.gov
+- https://www.nhc.noaa.gov
+- https://www.metoffice.gov.uk
+- https://www.dwd.de
+- https://www.jma.go.jp
+- https://www.bom.gov.au
+- https://www.ecmwf.int
+
+Model & Observation Tools:
+- https://weather.cod.edu/satrad/
+- https://www.tropicaltidbits.com/analysis/models/
+- https://www.windy.com
+- https://worldview.earthdata.nasa.gov/
+- https://www.pivotalweather.com/
+- https://opendata.dwd.de
+- https://nomads.ncep.noaa.gov
+- https://registry.opendata.aws/noaa-gfs
+- https://open-meteo.com
+
+Feeds & Developer:
+- https://ecalertme.weather.gc.ca/warning-latest_en.php
+- https://api.weather.gov
+- https://mapservices.weather.noaa.gov
+- https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/spc_mesoscale_discussion/MapServer
+
+Specialized:
+- https://wateroffice.ec.gc.ca/mainmenu/real_time_data_index_e.html
+- https://cwfis.cfs.nrcan.gc.ca/interactive-map
+- https://www.airnow.gov/
+- https://www.manitoba511.ca/
+- https://www.gov.mb.ca/emo/index.html
+
+YouTube / Chasers:
+- https://www.youtube.com/@RyanHallYall
+- https://www.youtube.com/@MaxVelocityWX
+- https://www.youtube.com/user/ReedTimmer7
+- https://www.youtube.com/user/mikeolbinski
+- https://www.youtube.com/c/SeanCaseyStormChasers
+- https://www.youtube.com/user/JamesSpann
+- https://www.youtube.com/@NOAA
+- https://www.youtube.com/@TheWeatherChannel
+
+Additional Developer APIs (recommended):
+- https://openweathermap.org/api
+- https://dev.meteostat.net/api/
+- https://api.met.no
+- https://www.visualcrossing.com/weather-api/
+
+(End of index)`;
+
+    function makeDownloadLink(text, filename='weather-hub-pro-links.txt'){
+      const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      return {url, filename};
+    }
+
+    document.getElementById('release')?.addEventListener('click', ()=>{});
+    // two download buttons
+    document.getElementById('dlBtn').addEventListener('click', ()=>{
+      const {url, filename} = makeDownloadLink(providedIndex, 'weather-hub-pro-links.txt');
+      const a = document.createElement('a');
+      a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    });
+    document.getElementById('downloadIndex').addEventListener('click', ()=>{
+      const {url, filename} = makeDownloadLink(providedIndex, 'weather-hub-pro-links.txt');
+      const a = document.createElement('a');
+      a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    });
+    document.getElementById('copyBtn').addEventListener('click', async ()=>{
+      await navigator.clipboard.writeText(providedIndex);
+      flash('Index text copied to clipboard');
+    });
+
+    // small user feedback
+    function flash(msg){
+      const t = document.createElement('div');
+      t.innerText = msg;
+      t.style.position='fixed';
+      t.style.right='20px';
+      t.style.bottom='20px';
+      t.style.background='#022c2a';
+      t.style.padding='10px 14px';
+      t.style.borderRadius='8px';
+      t.style.boxShadow='0 8px 30px rgba(0,0,0,0.6)';
+      document.body.appendChild(t);
+      setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity 400ms';},1600);
+      setTimeout(()=>t.remove(),2200);
+    }
+
+    // render on load
+    render();
+
+    // (Optional) Example: simple client-side search initialization from URL ?q=
+    const params = new URLSearchParams(location.search);
+    if(params.get('q')){ input.value = params.get('q'); filter(params.get('q')) }
+
+    // Accessibility note: keyboard navigation works on buttons & links.
+  </script>
 </body>
 </html>
