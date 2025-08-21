@@ -1,288 +1,258 @@
-import React, { useState, useEffect } from 'react';
-import _ from 'lodash';
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Weather Hub Pro — Mobile Optimized</title>
+<meta name="description" content="Mobile-optimized Weather Hub focused on Canada (Manitoba) and the USA. Fast access to forecasts, radar, warnings, severe discussions, webcams, hydrology, air quality & wildfire maps." />
+<style>
+  :root{
+    --bg1:#031124; --bg2:#071a2a; --card:#07172a;
+    --accent:#49c0ff; --accent2:#7b61ff; --muted:#9fb0bd;
+    --radius:14px; --shadow: 0 10px 30px rgba(2,6,23,0.6);
+    --safe-area-top: env(safe-area-inset-top, 12px);
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:#e7f6ff;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background-attachment:fixed}
+  .page{max-width:1100px;margin:0 auto;padding:calc(18px + var(--safe-area-top)) 16px 28px;border-radius:0;box-shadow:none}
+  header{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(6px);position:sticky;top:0;z-index:80;background:linear-gradient(180deg, rgba(3,18,36,0.85), rgba(3,18,36,0.6))}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#021424;font-weight:800;font-size:16px;box-shadow:0 6px 18px rgba(124,97,255,0.12)}
+  h1{margin:0;font-size:16px}
+  p.lead{margin:0;color:var(--muted);font-size:12px}
 
-// Component for the planet viewing application
-const PlanetViewer = () => {
-  // State for location, orientation, and planet data
-  const [location, setLocation] = useState(null);
-  const [orientation, setOrientation] = useState({ alpha: 0, beta: 0, gamma: 0 });
-  const [planets, setPlanets] = useState([]);
-  const [error, setError] = useState(null);
-  const [permissionStatus, setPermissionStatus] = useState({
-    location: 'pending',
-    orientation: 'pending'
-  });
-  const [compassHeading, setCompassHeading] = useState(0);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // Calculate planet positions once we have a location
-  useEffect(() => {
-    if (location) {
-      calculatePlanetPositions(location, currentDate);
-    }
-  }, [location, currentDate]);
-  
-  // Request location permission and set up
-  const requestLocationPermission = () => {
-    setPermissionStatus(prev => ({ ...prev, location: 'requesting' }));
-    
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-          setPermissionStatus(prev => ({ ...prev, location: 'granted' }));
-        },
-        (error) => {
-          setError('Location permission denied. Please enable location services.');
-          setPermissionStatus(prev => ({ ...prev, location: 'denied' }));
-        }
-      );
-    } else {
-      setError('Geolocation is not supported by your browser.');
-      setPermissionStatus(prev => ({ ...prev, location: 'unavailable' }));
-    }
-  };
-  
-  // Request device orientation permission and set up
-  const requestOrientationPermission = () => {
-    setPermissionStatus(prev => ({ ...prev, orientation: 'requesting' }));
-    
-    // Check if DeviceOrientationEvent exists and if permission API is available
-    if (window.DeviceOrientationEvent) {
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+ requires explicit permission
-        DeviceOrientationEvent.requestPermission()
-          .then(permissionState => {
-            if (permissionState === 'granted') {
-              setPermissionStatus(prev => ({ ...prev, orientation: 'granted' }));
-              window.addEventListener('deviceorientation', handleOrientation);
-            } else {
-              setError('Orientation permission denied. Please enable device orientation.');
-              setPermissionStatus(prev => ({ ...prev, orientation: 'denied' }));
-            }
-          })
-          .catch(error => {
-            setError('Error requesting orientation permission.');
-            setPermissionStatus(prev => ({ ...prev, orientation: 'error' }));
-          });
-      } else {
-        // Non-iOS or older iOS versions
-        window.addEventListener('deviceorientation', handleOrientation);
-        setPermissionStatus(prev => ({ ...prev, orientation: 'granted' }));
-      }
-    } else {
-      setError('Device orientation is not supported by your browser.');
-      setPermissionStatus(prev => ({ ...prev, orientation: 'unavailable' }));
-    }
-  };
-  
-  // Handle orientation data
-  const handleOrientation = (event) => {
-    // Alpha: compass direction (0-360)
-    // Beta: front-to-back tilt (-180 to 180)
-    // Gamma: left-to-right tilt (-90 to 90)
-    const { alpha, beta, gamma } = event;
-    
-    setOrientation({ alpha, beta, gamma });
-    
-    // Calculate actual compass heading
-    // This is a simplified calculation; actual implementation would need
-    // to account for device orientation and magnetic declination
-    let heading = alpha;
-    if (typeof alpha !== 'undefined') {
-      // Convert alpha value to a compass heading (alpha is opposite of compass)
-      heading = (360 - alpha) % 360;
-      setCompassHeading(heading);
-    }
-  };
-  
-  // Calculate planetary positions using a simple model
-  // In a real app, you would use a proper astronomy library
-  const calculatePlanetPositions = (loc, date) => {
-    // This is a simplified placeholder
-    // In a real implementation, you'd use astronomy calculations
-    // based on the current date, time, and location
-    
-    const simulatedPlanets = [
-      {
-        name: 'Mercury',
-        altitude: 15 + Math.random() * 20, // Degrees above horizon
-        azimuth: (30 + Math.random() * 30) % 360, // Degrees from North
-        color: '#E5E5E5',
-        size: 4
-      },
-      {
-        name: 'Venus',
-        altitude: 20 + Math.random() * 30,
-        azimuth: (270 + Math.random() * 40) % 360,
-        color: '#FFF3B0',
-        size: 8
-      },
-      {
-        name: 'Mars',
-        altitude: 30 + Math.random() * 40,
-        azimuth: (120 + Math.random() * 60) % 360,
-        color: '#FF6B6B',
-        size: 6
-      },
-      {
-        name: 'Jupiter',
-        altitude: 35 + Math.random() * 25,
-        azimuth: (200 + Math.random() * 40) % 360,
-        color: '#F4A261',
-        size: 12
-      },
-      {
-        name: 'Saturn',
-        altitude: 25 + Math.random() * 30,
-        azimuth: (150 + Math.random() * 50) % 360,
-        color: '#E9C46A',
-        size: 10
-      }
-    ];
-    
-    setPlanets(simulatedPlanets);
-  };
-  
-  // Calculate if a planet is currently visible in the device's view
-  const isPlanetInView = (planetAzimuth, deviceAzimuth) => {
-    // Calculate the angular difference, accounting for 360° wrap-around
-    const diff = Math.abs((planetAzimuth - deviceAzimuth + 180) % 360 - 180);
-    // Consider planets within 30° of the center of view to be "visible"
-    return diff <= 30;
-  };
-  
-  // Render component based on current state
-  return (
-    <div className="flex flex-col items-center justify-start p-4 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Solar System Viewer</h1>
-      
-      {/* Permissions Section */}
-      {(permissionStatus.location !== 'granted' || permissionStatus.orientation !== 'granted') && (
-        <div className="mb-6 w-full max-w-md bg-gray-800 p-4 rounded-lg">
-          <h2 className="text-xl mb-2">Required Permissions</h2>
-          
-          {permissionStatus.location !== 'granted' && (
-            <button 
-              onClick={requestLocationPermission}
-              className="w-full mb-2 p-2 bg-blue-600 rounded hover:bg-blue-700"
-            >
-              {permissionStatus.location === 'pending' ? 'Allow Location Access' : 
-                permissionStatus.location === 'requesting' ? 'Requesting...' : 
-                'Retry Location Permission'}
-            </button>
-          )}
-          
-          {permissionStatus.orientation !== 'granted' && (
-            <button 
-              onClick={requestOrientationPermission}
-              className="w-full p-2 bg-blue-600 rounded hover:bg-blue-700"
-            >
-              {permissionStatus.orientation === 'pending' ? 'Allow Compass Access' : 
-                permissionStatus.orientation === 'requesting' ? 'Requesting...' : 
-                'Retry Orientation Permission'}
-            </button>
-          )}
-          
-          {error && (
-            <div className="mt-2 p-2 bg-red-800 rounded text-sm">
-              {error}
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Location and Orientation Display */}
-      {location && (
-        <div className="mb-4 w-full max-w-md bg-gray-800 p-3 rounded-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <p>Lat: {location.latitude.toFixed(4)}°</p>
-              <p>Long: {location.longitude.toFixed(4)}°</p>
-            </div>
-            <div className="text-right">
-              <p>Heading: {compassHeading.toFixed(0)}°</p>
-              <p>Elevation: {orientation.beta ? orientation.beta.toFixed(0) : 0}°</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Compass Display */}
-      {permissionStatus.orientation === 'granted' && (
-        <div className="relative w-64 h-64 mb-6">
-          <div className="absolute inset-0 rounded-full border-2 border-gray-600"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div 
-              className="h-1 w-24 bg-red-500"
-              style={{ 
-                transform: `rotate(${compassHeading}deg)`,
-                transformOrigin: 'center left'
-              }}
-            ></div>
-          </div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-1">N</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-1">E</div>
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 mb-1">S</div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 ml-1">W</div>
-        </div>
-      )}
-      
-      {/* Planet Viewer */}
-      {planets.length > 0 && (
-        <div className="w-full max-w-md">
-          <h2 className="text-xl mb-2">Planets Visible</h2>
-          <div className="grid grid-cols-1 gap-2">
-            {planets.map(planet => {
-              const isVisible = isPlanetInView(planet.azimuth, compassHeading);
-              return (
-                <div
-                  key={planet.name}
-                  className={`p-3 rounded-lg flex items-center justify-between ${
-                    isVisible ? 'bg-green-800' : 'bg-gray-800'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div 
-                      className="rounded-full mr-3"
-                      style={{
-                        width: `${planet.size}px`,
-                        height: `${planet.size}px`,
-                        backgroundColor: planet.color
-                      }}
-                    ></div>
-                    <span>{planet.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <p>Az: {planet.azimuth.toFixed(0)}° {getDirectionFromAzimuth(planet.azimuth)}</p>
-                    <p>Alt: {planet.altitude.toFixed(0)}°</p>
-                    {isVisible && <span className="text-green-300 text-sm">In view</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      
-      {/* Instructions at the bottom */}
-      <div className="mt-6 text-sm text-gray-400">
-        <p>Hold your phone up and point it at the sky.</p>
-        <p>Green items are currently in your viewing direction.</p>
-        <p className="mt-2">Note: This is a demonstration with simulated planet positions.</p>
+  /* Controls */
+  .controls{display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap}
+  .search{flex:1;display:flex;align-items:center;background:rgba(255,255,255,0.02);padding:8px;border-radius:12px;padding-left:12px;border:1px solid rgba(255,255,255,0.03);min-width:0}
+  .search input{border:0;background:transparent;color:inherit;outline:0;padding:8px 10px;width:100%;font-size:15px}
+  .chip{background:linear-gradient(90deg, rgba(255,255,255,0.02), transparent);padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.04);font-weight:700;color:var(--accent);cursor:pointer;font-size:13px}
+  .download{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#021424;padding:9px 12px;border-radius:12px;border:0;font-weight:800;cursor:pointer;font-size:14px}
+
+  /* Grid and cards */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 20px rgba(2,6,23,0.4)}
+  .card h3{margin:0 0 6px 0;font-size:15px}
+  .muted{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .links{display:flex;flex-direction:column;gap:8px}
+  .link{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border:1px solid rgba(255,255,255,0.03);text-decoration:none;color:inherit;font-weight:700;font-size:15px}
+  .link small{color:var(--muted);font-weight:600;margin-left:auto;font-size:12px}
+
+  /* full width featured */
+  .full{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;background:linear-gradient(90deg, rgba(71,200,255,0.06), rgba(123,97,255,0.05));border:1px solid rgba(123,97,255,0.12)}
+  .alert-pill{display:inline-block;background:linear-gradient(90deg,#ff9a9a,#ff6b6b);padding:8px 12px;border-radius:999px;font-weight:800;color:#2a0b0b}
+
+  /* footer */
+  .footer{margin-top:12px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:6px}
+
+  /* make tap targets larger on mobile */
+  a.link{padding-top:14px;padding-bottom:14px}
+  .chip, .download {min-height:44px; display:flex; align-items:center; justify-content:center}
+
+  /* responsive adjustments */
+  @media (max-width:1100px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:720px){
+    header{padding:10px 8px}
+    .grid{grid-template-columns:1fr}
+    .brand{gap:10px}
+    .logo{width:40px;height:40px}
+    .card{padding:12px}
+    .search input{font-size:15px}
+    .download{padding:10px}
+    .controls{gap:6px}
+    .muted{font-size:13px}
+  }
+
+  /* subtle interactions */
+  .link:active{transform:scale(.998)}
+  .card:hover{transform:translateY(-4px)}
+  details summary{cursor:pointer}
+</style>
+</head>
+<body>
+<div class="page" role="main">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden>WH</div>
+      <div>
+        <h1>Weather Hub Pro</h1>
+        <p class="lead">Canada — Manitoba focus · Radar, warnings, severe discussions & live cams</p>
       </div>
     </div>
-  );
-};
 
-// Helper function to convert azimuth to cardinal direction
-function getDirectionFromAzimuth(azimuth) {
-  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  const index = Math.round(azimuth / 45) % 8;
-  return directions[index];
-}
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="chip" id="focusSearch">/ Search</button>
+      <a class="download" id="downloadBtn" href="#" download="weather-hub-pro-mobile.html">Download</a>
+    </div>
+  </header>
 
-export default PlanetViewer;
+  <div class="controls" role="search" aria-label="Search weather links">
+    <div class="search" title="Search links">
+      🔎 <input id="searchBox" placeholder="Try 'Manitoba', 'radar', 'severe', 'webcams'"/>
+    </div>
+    <button class="chip" id="resetBtn" aria-label="Reset search">Reset</button>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="full">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="alert-pill">MANITOBA FOCUS</div>
+          <div class="muted" style="margin-top:8px">Official warnings, severe discussions, webcams, hydrology and air quality — fast access for mobile.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="muted small">Last updated</div>
+          <div style="background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);font-weight:700">Aug 21, 2025</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card item" data-tags="canada eccc manitoba warnings radar forecasts severe discussions">
+      <h3>Environment & Climate Change Canada — Manitoba</h3>
+      <div class="muted">Official forecasts, warnings, radar mosaics, air quality and significant weather discussions.</div>
+      <div class="links">
+        <a class="link" href="https://weather.gc.ca/" target="_blank" rel="noopener noreferrer">ECCC — weather.gc.ca <small>National portal</small></a>
+        <a class="link" href="https://weather.gc.ca/index_e.html?alertTableFilterProv=MB&layers=%2Cradar" target="_blank" rel="noopener noreferrer">ECCC (Manitoba view) <small>warnings + radar</small></a>
+        <a class="link" href="https://weather.gc.ca/city/pages/mb-38_metric_e.html" target="_blank" rel="noopener noreferrer">Winnipeg — city forecast <small>hourly & 7-day</small></a>
+        <a class="link" href="https://weather.gc.ca/warnings/report_e.html?mb9=" target="_blank" rel="noopener noreferrer">Winnipeg — active alerts & reports <small>regional alerts</small></a>
+        <a class="link" href="https://kamala.cod.edu/Canada/latest.focn45.CWWG.html" target="_blank" rel="noopener noreferrer">Significant Weather Discussions <small>FOCN45 / CWWG</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="severe severeweather discussions thunderstorm tornado hail wind mb discussion">
+      <h3>Severe Weather Discussions & Storm Tools</h3>
+      <div class="muted">Convective outlooks, storm reports and spotting resources.</div>
+      <div class="links">
+        <a class="link" href="https://kamala.cod.edu/Canada/latest.focn45.CWWG.html" target="_blank" rel="noopener noreferrer">Latest Significant Weather Discussion <small>FOCN45 / CWWG</small></a>
+        <a class="link" href="https://www.spc.noaa.gov/" target="_blank" rel="noopener noreferrer">NOAA SPC — Convective outlooks <small>Cross-border context</small></a>
+        <a class="link" href="mailto:MBstorm@ec.gc.ca">Report severe weather <small>MBstorm@ec.gc.ca</small></a>
+        <details>
+          <summary>Reading tip</summary>
+          <div class="muted" style="margin-top:8px">ECCC discussions explain forecaster reasoning (instability, shear, timing) and expected hazards like hail or damaging winds.</div>
+        </details>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="radar satellite windy canada radar manitoba satellite goesi">
+      <h3>Radar & Satellite</h3>
+      <div class="muted">Regional radar, GOES satellite and interactive model maps.</div>
+      <div class="links">
+        <a class="link" href="https://weather.gc.ca/radar/index_e.html?id=24" target="_blank" rel="noopener noreferrer">Manitoba radar (ECCC) <small>Regional mosaic</small></a>
+        <a class="link" href="https://radar.weather.gov/" target="_blank" rel="noopener noreferrer">NWS Radar (US) <small>NEXRAD mosaic</small></a>
+        <a class="link" href="https://www.windy.com" target="_blank" rel="noopener noreferrer">Windy — interactive models <small>GFS / ECMWF</small></a>
+      </div>
+    </section>
+    
+    <section class="card item" data-tags="data visualization models education iowa environmental mesonet">
+      <h3>Data & Visualization</h3>
+      <div class="muted">Advanced data platforms and educational resources.</div>
+      <div class="links">
+        <a class="link" href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener noreferrer">Iowa Environmental Mesonet <small>Deep data archive</small></a>
+        <a class="link" href="https://www.pivotalweather.com/" target="_blank" rel="noopener noreferrer">Pivotal Weather <small>Model visualization</small></a>
+        <a class="link" href="http://www.theweatherprediction.com/" target="_blank" rel="noopener noreferrer">The Weather Prediction <small>Learn meteorology</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="webcams cameras manitoba winnipeg 511">
+      <h3>Webcams & Highway Cameras</h3>
+      <div class="muted">Road and city cams for real-time verification.</div>
+      <div class="links">
+        <a class="link" href="https://www.manitoba511.ca/en/cameras/" target="_blank" rel="noopener noreferrer">Manitoba 511 — Road cameras <small>Highway cams</small></a>
+        <a class="link" href="https://winnipeg-webcams.yolasite.com/" target="_blank" rel="noopener noreferrer">Winnipeg webcams collection <small>City views</small></a>
+        <a class="link" href="https://www.weatherbug.com/weather-camera/winnipeg-manitoba-ca" target="_blank" rel="noopener noreferrer">Weather cameras — Winnipeg <small>Multiple locations</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="airquality aqi smoke wildfire aqhi manitoba">
+      <h3>Air Quality & Smoke</h3>
+      <div class="muted">AQHI, wildfire maps and satellite hotspot layers.</div>
+      <div class="links">
+        <a class="link" href="https://weather.gc.ca/airquality/pages/index_e.html" target="_blank" rel="noopener noreferrer">ECCC — Air Quality / AQHI <small>Local & national</small></a>
+        <a class="link" href="https://cwfis.cfs.nrcan.gc.ca/interactive-map" target="_blank" rel="noopener noreferrer">CWFIS — Fire maps <small>Wildland tracking</small></a>
+        <a class="link" href="https://firms.modaps.eosdis.nasa.gov/usfs/map/" target="_blank" rel="noopener noreferrer">NASA FIRMS — Hotspots <small>Satellite detections</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="hydrology rivers waterlevels manitoba flood gauges">
+      <h3>Hydrology & Flood</h3>
+      <div class="muted">Real-time river levels and flood forecasts.</div>
+      <div class="links">
+        <a class="link" href="https://wateroffice.ec.gc.ca/mainmenu/real_time_data_index_e.html" target="_blank" rel="noopener noreferrer">Water Survey of Canada <small>Hydrometric gauges</small></a>
+        <a class="link" href="https://www.winnipeg.ca/waterandwaste/flood/riverLevels.stm" target="_blank" rel="noopener noreferrer">Winnipeg — River levels <small>James Ave gauge</small></a>
+        <a class="link" href="https://www.gov.mb.ca/floodinfo/" target="_blank" rel="noopener noreferrer">Manitoba Hydrologic Forecast Centre <small>Flood bulletins</small></a>
+      </div>
+    </section>
+    
+    <section class="card item" data-tags="community international spotters skywarn metoffice">
+      <h3>Community & International</h3>
+      <div class="muted">Spotter networks and global weather services.</div>
+      <div class="links">
+        <a class="link" href="https://www.weather.gov/skywarn/" target="_blank" rel="noopener noreferrer">SKYWARN Storm Spotters <small>Community reports</small></a>
+        <a class="link" href="https://www.spotternetwork.org/" target="_blank" rel="noopener noreferrer">Spotter Network <small>Chaser coordination</small></a>
+        <a class="link" href="https://www.metoffice.gov.uk/" target="_blank" rel="noopener noreferrer">Met Office (UK) <small>United Kingdom</small></a>
+        <a class="link" href="https://meteofrance.com/" target="_blank" rel="noopener noreferrer">Météo-France <small>France</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="usa noaa nws models airnow">
+      <h3>USA — Official</h3>
+      <div class="muted">NWS, NOAA, NHC & AirNow links.</div>
+      <div class="links">
+        <a class="link" href="https://www.weather.gov/" target="_blank" rel="noopener noreferrer">National Weather Service <small>Local NWS offices</small></a>
+        <a class="link" href="https://www.noaa.gov/weather" target="_blank" rel="noopener noreferrer">NOAA — Weather <small>Satellite & models</small></a>
+        <a class="link" href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener noreferrer">National Hurricane Center <small>Tropical advisories</small></a>
+      </div>
+    </section>
+
+    <section class="card item" data-tags="feeds rss apps widgets devtools">
+      <h3>Feeds & Developer Tools</h3>
+      <div class="muted">APIs, RSS and model endpoints.</div>
+      <div class="links">
+        <a class="link" href="https://www.weather.gov/rss_page.php" target="_blank" rel="noopener noreferrer">NWS RSS & widgets <small>Machine alerts</small></a>
+        <a class="link" href="https://nomads.ncep.noaa.gov/" target="_blank" rel="noopener noreferrer">NOAA NOMADS — model data <small>GFS / ensembles</small></a>
+        <a class="link" href="https://www.manitoba511.ca/" target="_blank" rel="noopener noreferrer">Manitoba511 (apps) <small>iOS / Android</small></a>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="footer">
+    <div class="muted">Tip: Press '/' to focus search. Links open in new tabs. Want me to embed a live radar or add your logo? I can update this file for you.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <div class="muted">Built: Aug 21, 2025</div>
+      <div class="muted">• Links point to official agencies & services</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Populate download link with file content so users can download the current page
+  (function(){
+    const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>` + document.documentElement.innerHTML + `</body></html>`;
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const dl = document.getElementById('downloadBtn');
+    dl.href = url;
+  })();
+
+  // Search/filter logic
+  const searchBox = document.getElementById('searchBox');
+  const resetBtn = document.getElementById('resetBtn');
+  const items = Array.from(document.querySelectorAll('.item'));
+  function filter(q=''){
+    q = q.trim().toLowerCase();
+    items.forEach(it=>{
+      const tags = (it.dataset.tags || '').toLowerCase();
+      const txt = (it.innerText || '').toLowerCase();
+      const show = !q || tags.includes(q) || txt.includes(q);
+      it.style.display = show ? '' : 'none';
+    });
+  }
+  searchBox.addEventListener('input', e=> filter(e.target.value));
+  resetBtn.addEventListener('click', ()=> { searchBox.value=''; filter(''); searchBox.focus(); });
+  document.getElementById('focusSearch').addEventListener('click', ()=> searchBox.focus());
+  window.addEventListener('keydown', (e)=>{ if(e.key === '/') { e.preventDefault(); searchBox.focus(); } });
+</script>
+</body>
+</html>
